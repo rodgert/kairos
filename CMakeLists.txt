@@ -54,11 +54,16 @@ FetchContent_MakeAvailable(txlog-cpp)
 # CLAP SDK — header-only C/C++ interface.
 FetchContent_Declare(clap
     GIT_REPOSITORY https://github.com/free-audio/clap.git
-    GIT_TAG        v1.2.6
+    GIT_TAG        1.2.6
     GIT_SHALLOW    TRUE)
 FetchContent_MakeAvailable(clap)
 
 # Ableton Link — beat-sync peer protocol.
+# Use FetchContent_Populate + include() rather than FetchContent_MakeAvailable:
+# AbletonLinkConfig.cmake creates an IMPORTED INTERFACE target; if added via
+# add_subdirectory (what MakeAvailable does) that target has subdirectory scope
+# and is invisible to this CMakeLists. Including the config directly puts the
+# target in the top-level scope where target_link_libraries can find it.
 #   To use a local checkout: cmake -DLINK_DIR=/path/to/link ...
 if(DEFINED LINK_DIR)
     FetchContent_Declare(abl-link SOURCE_DIR "${LINK_DIR}")
@@ -68,9 +73,11 @@ else()
         GIT_TAG        Link-3.1.1
         GIT_SHALLOW    TRUE)
 endif()
-set(LINK_BUILD_JACK        OFF CACHE BOOL "" FORCE)
-set(LINK_BUILD_TESTS       OFF CACHE BOOL "" FORCE)
-FetchContent_MakeAvailable(abl-link)
+FetchContent_GetProperties(abl-link)
+if(NOT abl-link_POPULATED)
+    FetchContent_Populate(abl-link)
+endif()
+include(${abl-link_SOURCE_DIR}/AbletonLinkConfig.cmake)
 
 # ---------------------------------------------------------------------------
 # kairos-core — static library; all testable logic lives here.
