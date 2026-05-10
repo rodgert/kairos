@@ -5,7 +5,7 @@ project(kairos
     VERSION 0.1.0
     DESCRIPTION "kairos — CLAP container runtime for cljseq-generated plugins"
     HOMEPAGE_URL "https://github.com/cljseq/kairos"
-    LANGUAGES CXX)
+    LANGUAGES C CXX)
 
 # ---------------------------------------------------------------------------
 # Dependency policy (mirrors cljseq native convention)
@@ -58,6 +58,77 @@ FetchContent_Declare(clap
     GIT_SHALLOW    TRUE)
 FetchContent_MakeAvailable(clap)
 
+# ---------------------------------------------------------------------------
+# liburcu — vendored from third_party/liburcu/ (LGPL-2.1-or-later).
+#
+# Flavor selection:
+#   macOS  → urcu-bp (bulletproof; no thread registration, no sys_membarrier)
+#   Linux  → urcu-mb (memory barrier; sys_membarrier upgrade path deferred)
+#
+# config.h is copied from the appropriate platform file at configure time.
+# ---------------------------------------------------------------------------
+
+set(URCU_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/third_party/liburcu")
+set(URCU_GENERATED_INCLUDE "${CMAKE_CURRENT_BINARY_DIR}/urcu-include")
+
+# Select and materialise config.h for the target platform.
+# Start with urcu-bp on all platforms: no thread registration, no
+# sys_membarrier dependency, works in the audio callback without ceremony.
+# Linux upgrade path: switch URCU_FLAVOR_SRC to urcu.c (urcu-mb) once
+# we are ready to adopt the thread-registration discipline.
+if(APPLE)
+    set(URCU_CONFIG_SRC "${URCU_ROOT}/config/config-darwin.h")
+else()
+    set(URCU_CONFIG_SRC "${URCU_ROOT}/config/config-linux.h")
+endif()
+set(URCU_FLAVOR_SRC "${URCU_ROOT}/src/urcu-bp.c")
+
+configure_file("${URCU_CONFIG_SRC}"
+               "${URCU_GENERATED_INCLUDE}/urcu/config.h" COPYONLY)
+
+add_library(urcu-flavor STATIC
+    "${URCU_FLAVOR_SRC}"
+    "${URCU_ROOT}/src/compat_futex.c"
+    "${URCU_ROOT}/src/urcu-call-rcu-impl.h"
+)
+
+add_library(urcu::flavor ALIAS urcu-flavor)
+
+target_include_directories(urcu-flavor
+    PUBLIC
+        "${URCU_ROOT}/include"
+        "${URCU_GENERATED_INCLUDE}"
+    PRIVATE
+        "${URCU_ROOT}/src"
+)
+
+# Macro defines intentionally omitted: urcu-bp.c and urcu.c define
+# _LGPL_SOURCE and URCU_NO_COMPAT_IDENTIFIERS themselves at the top of the file.
+
+set_target_properties(urcu-flavor PROPERTIES
+    C_STANDARD   11
+    C_STANDARD_REQUIRED ON
+)
+
+# RtMidi — cross-platform MIDI I/O (MIT).
+# Pin: 6.0.0 — matches cljseq-sidecar.
+FetchContent_Declare(rtmidi
+    GIT_REPOSITORY https://github.com/thestk/rtmidi.git
+    GIT_TAG        6.0.0
+    GIT_SHALLOW    TRUE)
+set(RTMIDI_BUILD_TESTING OFF CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(rtmidi)
+
+# RtAudio — cross-platform audio I/O (MIT).
+# Pin: 6.0.1 — same family as RtMidi, matches cljseq native convention.
+FetchContent_Declare(rtaudio
+    GIT_REPOSITORY https://github.com/thestk/rtaudio.git
+    GIT_TAG        6.0.1
+    GIT_SHALLOW    TRUE)
+set(RTAUDIO_BUILD_TESTING OFF CACHE BOOL "" FORCE)
+set(RTAUDIO_TARGETNAME_UNINSTALL rtaudio_uninstall CACHE STRING "" FORCE)
+FetchContent_MakeAvailable(rtaudio)
+
 # Ableton Link — beat-sync peer protocol.
 # Use FetchContent_Populate + include() rather than FetchContent_MakeAvailable:
 # AbletonLinkConfig.cmake creates an IMPORTED INTERFACE target; if added via
@@ -89,6 +160,10 @@ add_library(kairos-core STATIC
     src/ipc_channel.cpp
     src/session.cpp
     src/control_thread.cpp
+    src/plugin_host.cpp
+    src/plugin_instance.cpp
+    src/plugin_graph_manager.cpp
+    src/builtin_plugins.cpp
 )
 
 add_library(kairos::core ALIAS kairos-core)
@@ -104,6 +179,9 @@ target_link_libraries(kairos-core
     PUBLIC
         txlog::txlog
         clap
+        urcu::flavor
+    PRIVATE
+        ${CMAKE_DL_LIBS}
     # Ableton::Link is GPL-2.0-or-later and is linked only into the executable,
     # keeping kairos-core (and its LGPL-2.1-or-later headers) free of GPL exposure.
 )
@@ -130,9 +208,22 @@ endif()
 # ---------------------------------------------------------------------------
 
 if(KAIROS_BUILD_EXECUTABLE)
-    add_executable(kairos src/main.cpp)
+    add_executable(kairos
+        src/main.cpp
+        src/link_peer.cpp
+        src/midi_io.cpp
+        src/event_collector.cpp
+        src/input_event_buffer.cpp
+        src/osc_server.cpp
+        src/process_thread.cpp
+        src/plugin_discovery.cpp
+        src/audio_device.cpp
+        src/audio_engine.cpp
+    )
 
-    target_link_libraries(kairos PRIVATE kairos::core Ableton::Link)
+    target_include_directories(kairos PRIVATE src)
+
+    target_link_libraries(kairos PRIVATE kairos::core Ableton::Link rtmidi rtaudio)
 
     set_target_properties(kairos PROPERTIES
         CXX_STANDARD          20

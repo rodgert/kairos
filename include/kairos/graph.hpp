@@ -2,11 +2,15 @@
 #pragma once
 
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include <edn/value.hpp>
 
 namespace kairos {
+
+// Maps stable plugin identifier (e.g. "org.cljseq.dsp/fm-voice") to .clap file path.
+using plugin_registry = std::unordered_map<std::string, std::string>;
 
 // A single plugin instance in the audio graph.
 // `plugin` is the stable string identifier used by the plugin registry

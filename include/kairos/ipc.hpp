@@ -20,6 +20,9 @@ constexpr uint8_t msg_register_source = 0x33; // EDN keyword id + name + descrip
 constexpr uint8_t msg_graph_load      = 0x34; // EDN plugin graph description
 constexpr uint8_t msg_graph_reset     = 0x35; // tear down current graph
 constexpr uint8_t msg_param_set       = 0x40; // EDN path + pending tuple
+constexpr uint8_t msg_note_on         = 0x41; // EDN note-on event  → ipc_in_queue
+constexpr uint8_t msg_note_off        = 0x42; // EDN note-off event → ipc_in_queue
+constexpr uint8_t msg_midi_in         = 0x43; // EDN raw MIDI bytes → ipc_in_queue
 
 // Header layout.  Laid out for direct memcpy from the wire; fields in network byte
 // order (big-endian) — callers must byte-swap payload_len on little-endian hosts.

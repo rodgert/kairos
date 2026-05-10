@@ -17,8 +17,11 @@ TEST_CASE("ipc: message type constants are in expected ranges", "[ipc]") {
     REQUIRE(kairos::ipc::msg_graph_load == 0x34);
     REQUIRE(kairos::ipc::msg_graph_reset == 0x35);
 
-    // 0x40 param block
+    // 0x40 param/note block
     REQUIRE(kairos::ipc::msg_param_set == 0x40);
+    REQUIRE(kairos::ipc::msg_note_on == 0x41);
+    REQUIRE(kairos::ipc::msg_note_off == 0x42);
+    REQUIRE(kairos::ipc::msg_midi_in == 0x43);
 }
 
 TEST_CASE("ipc: default-constructed header has zero payload_len", "[ipc]") {
