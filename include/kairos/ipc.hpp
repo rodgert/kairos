@@ -23,6 +23,8 @@ constexpr uint8_t msg_param_set       = 0x40; // EDN path + pending tuple
 constexpr uint8_t msg_note_on         = 0x41; // EDN note-on event  → ipc_in_queue
 constexpr uint8_t msg_note_off        = 0x42; // EDN note-off event → ipc_in_queue
 constexpr uint8_t msg_midi_in         = 0x43; // EDN raw MIDI bytes → ipc_in_queue
+constexpr uint8_t msg_wasm_hot_swap =
+    0x44; // EDN {:node-id :kw :wasm-path "..."}  → gapless WASM swap
 
 // Header layout.  Laid out for direct memcpy from the wire; fields in network byte
 // order (big-endian) — callers must byte-swap payload_len on little-endian hosts.

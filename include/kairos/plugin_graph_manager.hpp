@@ -66,6 +66,12 @@ class plugin_graph_manager {
     std::size_t node_count() const noexcept;
     bool        has_node(const edn::keyword& id) const noexcept;
 
+    // Gapless hot-swap of the WASM module for a single node.
+    // Delegates to plugin_instance::hot_swap() which uses the kairos RCU extension.
+    // Returns node_not_found if no node has the given id.
+    result<std::monostate, plugin_error> hot_swap_node(const edn::keyword& id,
+                                                       const std::string&  new_wasm_path);
+
   private:
     struct node_entry {
         edn::keyword    id;

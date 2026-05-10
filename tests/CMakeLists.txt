@@ -16,7 +16,7 @@ if(KAIROS_WASM_BRIDGE)
         set(_phasor_dsp "${CMAKE_CURRENT_BINARY_DIR}/test_phasor.dsp")
         set(_phasor_wasm "${CMAKE_CURRENT_BINARY_DIR}/test_phasor.wasm")
         file(WRITE "${_phasor_dsp}"
-            "import(\"stdfaust.lib\");\nprocess = os.phasor(1.0, 440.0);\n")
+            "import(\"stdfaust.lib\");\nfreq = hslider(\"freq\", 440.0, 20.0, 20000.0, 1.0);\nprocess = os.phasor(1.0, freq);\n")
         execute_process(
             COMMAND "${FAUST_EXECUTABLE}" -lang wasm "${_phasor_dsp}" -o "${_phasor_wasm}"
             RESULT_VARIABLE _faust_result

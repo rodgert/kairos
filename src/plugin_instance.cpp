@@ -187,6 +187,27 @@ void plugin_instance::deactivate() {
     state_ = state::initialized;
 }
 
+result<std::monostate, plugin_error> plugin_instance::hot_swap(const std::string& new_wasm_path) {
+    if (state_ != state::activated && state_ != state::processing)
+        return unexpected<plugin_error>{plugin_error::wrong_state};
+
+#ifdef KAIROS_WASM_BRIDGE
+    const auto* ext = static_cast<const kairos_hot_swap_t*>(
+        plugin_->get_extension(plugin_, k_kairos_ext_hot_swap));
+    if (!ext)
+        return unexpected<plugin_error>{plugin_error::hot_swap_unsupported};
+
+    // request() performs a full RCU swap of the WASM DSP state — no stop/start needed.
+    if (!ext->request(plugin_, new_wasm_path.c_str()))
+        return unexpected<plugin_error>{plugin_error::hot_swap_failed};
+
+    return std::monostate{};
+#else
+    (void)new_wasm_path;
+    return unexpected<plugin_error>{plugin_error::hot_swap_unsupported};
+#endif
+}
+
 const clap_plugin_descriptor_t* plugin_instance::descriptor() const noexcept {
     return plugin_ ? plugin_->desc : nullptr;
 }

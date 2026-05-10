@@ -365,4 +365,12 @@ bool plugin_graph_manager::has_node(const edn::keyword& id) const noexcept {
     return find_node_idx(id) != std::size_t(-1);
 }
 
+result<std::monostate, plugin_error>
+plugin_graph_manager::hot_swap_node(const edn::keyword& id, const std::string& new_wasm_path) {
+    const std::size_t idx = find_node_idx(id);
+    if (idx == std::size_t(-1))
+        return unexpected<plugin_error>{plugin_error::node_not_found};
+    return nodes_[idx].inst.hot_swap(new_wasm_path);
+}
+
 } // namespace kairos
