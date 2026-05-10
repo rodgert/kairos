@@ -2,6 +2,9 @@
 #include <kairos/plugin_instance.hpp>
 
 #include "builtin_plugins.hpp"
+#ifdef KAIROS_WASM_BRIDGE
+#include "wasm_bridge_plugin.hpp"
+#endif
 
 #include <clap/factory/plugin-factory.h>
 
@@ -25,6 +28,17 @@ namespace {
         return ports;
     }
 
+    const clap_plugin_t* create_builtin(const clap_host_t* host, const std::string& plugin_id) {
+#ifdef KAIROS_WASM_BRIDGE
+        if (plugin_id.starts_with(k_wasm_bridge_id_prefix)) {
+            const auto* factory = get_wasm_bridge_factory();
+            return factory->create_plugin(factory, host, plugin_id.c_str());
+        }
+#endif
+        const auto* factory = get_builtin_factory();
+        return factory->create_plugin(factory, host, plugin_id.c_str());
+    }
+
 } // namespace
 
 result<plugin_instance, plugin_error> plugin_instance::load(const std::string& path,
@@ -32,8 +46,7 @@ result<plugin_instance, plugin_error> plugin_instance::load(const std::string& p
                                                             const clap_host_t* host) {
     // Built-in plugins bypass dlopen — the factory lives in-process.
     if (path.starts_with(k_builtin_path_prefix)) {
-        const auto*          factory = get_builtin_factory();
-        const clap_plugin_t* plugin  = factory->create_plugin(factory, host, plugin_id.c_str());
+        const clap_plugin_t* plugin = create_builtin(host, plugin_id);
         if (!plugin)
             return unexpected<plugin_error>{plugin_error::create_failed};
         if (!plugin->init(plugin))

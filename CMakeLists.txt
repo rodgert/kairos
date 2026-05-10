@@ -29,6 +29,7 @@ set(FETCHCONTENT_UPDATES_DISCONNECTED ON CACHE BOOL
 
 option(KAIROS_BUILD_TESTS      "Build kairos unit tests"           OFF)
 option(KAIROS_BUILD_EXECUTABLE "Build the kairos runtime binary"   ON)
+option(KAIROS_WASM_BRIDGE      "Build the Faust WASM bridge plugin (requires network for wasmtime)" OFF)
 
 # ---------------------------------------------------------------------------
 # Dependencies
@@ -151,6 +152,58 @@ endif()
 include(${abl-link_SOURCE_DIR}/AbletonLinkConfig.cmake)
 
 # ---------------------------------------------------------------------------
+# wasmtime C API — pre-built binaries, downloaded only when KAIROS_WASM_BRIDGE=ON.
+#
+# Platform naming follows bytecodealliance/wasmtime release convention:
+#   aarch64-macos, x86_64-macos, aarch64-linux, x86_64-linux
+#
+# Pin: v44.0.1 — update with full SHA256 verification.
+# ---------------------------------------------------------------------------
+
+if(KAIROS_WASM_BRIDGE)
+    set(_wasmtime_ver "v44.0.1")
+
+    if(APPLE)
+        if(CMAKE_SYSTEM_PROCESSOR MATCHES "arm64|aarch64")
+            set(_wasmtime_platform "aarch64-macos")
+            set(_wasmtime_hash "SHA256=5da6d09fa6340db6d7afc8b73d189eff4973825c9a6fa5e814d2f9b1ddfd8998")
+        else()
+            set(_wasmtime_platform "x86_64-macos")
+            set(_wasmtime_hash "SHA256=8a3877178c50a2a2a20fcb94ca86efd14ba4376698e48a509f72bc52e961ce49")
+        endif()
+    elseif(UNIX)
+        if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
+            set(_wasmtime_platform "aarch64-linux")
+            set(_wasmtime_hash "SHA256=5b4614a311c7c391fb1fc5e9c7ab3782f5a441f9e1fa0cc60fe364ff5371c010")
+        else()
+            set(_wasmtime_platform "x86_64-linux")
+            set(_wasmtime_hash "SHA256=fe9b4bfa87724054cebcc09b83a17d5ded66a465054b77c8de0ebc166ad78d7a")
+        endif()
+    else()
+        message(FATAL_ERROR "KAIROS_WASM_BRIDGE: unsupported platform (Windows not yet supported)")
+    endif()
+
+    set(_wasmtime_name "wasmtime-${_wasmtime_ver}-${_wasmtime_platform}-c-api")
+
+    FetchContent_Declare(wasmtime
+        URL "https://github.com/bytecodealliance/wasmtime/releases/download/${_wasmtime_ver}/${_wasmtime_name}.tar.xz"
+        URL_HASH "${_wasmtime_hash}")
+    FetchContent_MakeAvailable(wasmtime)
+
+    # kairos-wasmtime INTERFACE target: exposes headers and links the static lib + system deps.
+    add_library(kairos-wasmtime INTERFACE)
+    target_include_directories(kairos-wasmtime INTERFACE "${wasmtime_SOURCE_DIR}/include")
+    target_link_libraries(kairos-wasmtime INTERFACE
+        "${wasmtime_SOURCE_DIR}/lib/libwasmtime.a")
+    if(APPLE)
+        target_link_libraries(kairos-wasmtime INTERFACE
+            "-framework Security" "-framework CoreFoundation" "-framework SystemConfiguration")
+    elseif(UNIX)
+        target_link_libraries(kairos-wasmtime INTERFACE pthread dl)
+    endif()
+endif()
+
+# ---------------------------------------------------------------------------
 # kairos-core — static library; all testable logic lives here.
 # The kairos executable is a thin wrapper that calls kairos_core::run().
 # ---------------------------------------------------------------------------
@@ -191,6 +244,12 @@ set_target_properties(kairos-core PROPERTIES
     CXX_STANDARD_REQUIRED ON
     CXX_EXTENSIONS        OFF
 )
+
+if(KAIROS_WASM_BRIDGE)
+    target_sources(kairos-core PRIVATE src/wasm_bridge_plugin.cpp)
+    target_compile_definitions(kairos-core PRIVATE KAIROS_WASM_BRIDGE=1)
+    target_link_libraries(kairos-core PRIVATE kairos-wasmtime)
+endif()
 
 # ---------------------------------------------------------------------------
 # Compiler warnings (opt-in; does not affect consumers)
