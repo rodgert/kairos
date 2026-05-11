@@ -201,22 +201,93 @@ if(KAIROS_WASM_BRIDGE)
     elseif(UNIX)
         target_link_libraries(kairos-wasmtime INTERFACE pthread dl)
     endif()
+
+    # nlohmann/json — header-only JSON for Faust metadata parsing.
+    # Pin: v3.11.3.
+    FetchContent_Declare(nlohmann_json
+        GIT_REPOSITORY https://github.com/nlohmann/json.git
+        GIT_TAG        v3.11.3
+        GIT_SHALLOW    TRUE)
+    set(JSON_BuildTests OFF CACHE BOOL "" FORCE)
+    set(JSON_Install    OFF CACHE BOOL "" FORCE)
+    FetchContent_MakeAvailable(nlohmann_json)
 endif()
 
 # ---------------------------------------------------------------------------
-# kairos-core — static library; all testable logic lives here.
-# The kairos executable is a thin wrapper that calls kairos_core::run().
+# cljseq-rt — shared runtime substrate; no CLAP plugin machinery.
+#
+# Contains: IPC channel, session (txlog), rt_control_thread base, Link peer,
+# MIDI I/O, OSC server, audio device, event infrastructure.
+#
+# Ableton::Link is GPL-2.0-or-later; cljseq-rt inherits that license at link
+# time.  kairos-core (CLAP layer) and the kairos executable link cljseq-rt and
+# are therefore also GPL at the binary level, consistent with the existing
+# control_thread.cpp / main.cpp SPDX headers.
+#
+# aion (future) links cljseq-rt without kairos-core, keeping the CLAP machinery
+# out of the embedded/RPi deployment.
 # ---------------------------------------------------------------------------
 
-add_library(kairos-core STATIC
+add_library(cljseq-rt STATIC
     src/version.cpp
     src/ipc_channel.cpp
     src/session.cpp
+    src/rt_control_thread.cpp
+    src/link_peer.cpp
+    src/midi_io.cpp
+    src/event_collector.cpp
+    src/input_event_buffer.cpp
+    src/osc_server.cpp
+    src/audio_device.cpp
+)
+
+add_library(cljseq::rt ALIAS cljseq-rt)
+
+target_include_directories(cljseq-rt
+    PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    PRIVATE
+        src
+)
+
+target_link_libraries(cljseq-rt
+    PUBLIC
+        txlog::txlog
+        clap
+        urcu::flavor
+        Ableton::Link
+        rtmidi
+        rtaudio
+)
+
+set_target_properties(cljseq-rt PROPERTIES
+    CXX_STANDARD          20
+    CXX_STANDARD_REQUIRED ON
+    CXX_EXTENSIONS        OFF
+)
+
+if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
+    target_compile_options(cljseq-rt PRIVATE
+        $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:-Wall -Wextra -Wpedantic -Werror>
+        $<$<CXX_COMPILER_ID:MSVC>:/W4 /WX>
+    )
+endif()
+
+# ---------------------------------------------------------------------------
+# kairos-core — CLAP plugin layer + process/audio engine.
+#
+# Depends on cljseq-rt for the runtime substrate.  The executable is a thin
+# main() that links kairos::core (which brings cljseq::rt transitively).
+# ---------------------------------------------------------------------------
+
+add_library(kairos-core STATIC
     src/control_thread.cpp
     src/plugin_host.cpp
     src/plugin_instance.cpp
     src/plugin_graph_manager.cpp
     src/builtin_plugins.cpp
+    src/process_thread.cpp
+    src/audio_engine.cpp
 )
 
 add_library(kairos::core ALIAS kairos-core)
@@ -230,13 +301,9 @@ target_include_directories(kairos-core
 
 target_link_libraries(kairos-core
     PUBLIC
-        txlog::txlog
-        clap
-        urcu::flavor
+        cljseq::rt
     PRIVATE
         ${CMAKE_DL_LIBS}
-    # Ableton::Link is GPL-2.0-or-later and is linked only into the executable,
-    # keeping kairos-core (and its LGPL-2.1-or-later headers) free of GPL exposure.
 )
 
 set_target_properties(kairos-core PROPERTIES
@@ -248,7 +315,7 @@ set_target_properties(kairos-core PROPERTIES
 if(KAIROS_WASM_BRIDGE)
     target_sources(kairos-core PRIVATE src/wasm_bridge_plugin.cpp)
     target_compile_definitions(kairos-core PRIVATE KAIROS_WASM_BRIDGE=1)
-    target_link_libraries(kairos-core PRIVATE kairos-wasmtime)
+    target_link_libraries(kairos-core PRIVATE kairos-wasmtime nlohmann_json::nlohmann_json)
 endif()
 
 # ---------------------------------------------------------------------------
@@ -263,26 +330,18 @@ if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
 endif()
 
 # ---------------------------------------------------------------------------
-# Executable
+# Executable — thin main() + plugin discovery
 # ---------------------------------------------------------------------------
 
 if(KAIROS_BUILD_EXECUTABLE)
     add_executable(kairos
         src/main.cpp
-        src/link_peer.cpp
-        src/midi_io.cpp
-        src/event_collector.cpp
-        src/input_event_buffer.cpp
-        src/osc_server.cpp
-        src/process_thread.cpp
         src/plugin_discovery.cpp
-        src/audio_device.cpp
-        src/audio_engine.cpp
     )
 
     target_include_directories(kairos PRIVATE src)
 
-    target_link_libraries(kairos PRIVATE kairos::core Ableton::Link rtmidi rtaudio)
+    target_link_libraries(kairos PRIVATE kairos::core)
 
     set_target_properties(kairos PROPERTIES
         CXX_STANDARD          20
