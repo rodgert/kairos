@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LGPL-2.1-or-later
 #pragma once
 
+#include <kairos/clap_kairos_param_bus.h>
 #include <kairos/clap_kairos_tap_bus.h>
 
 #include <nomos/rt/result.hpp>
@@ -81,6 +82,13 @@ class plugin_instance {
     const clap_kairos_tap_schema_t* tap_schema() const noexcept;
     const float*                    tap_frame(uint32_t* out_count) const noexcept;
 
+    // Param-bus — kairos/param-bus custom CLAP extension.
+    // Returns nullptr if the plugin does not expose the extension.
+    // param_schema() is valid after activate() and until the next activate() or reset().
+    // set_param_frame() must be called on the audio thread before each process().
+    const clap_kairos_param_schema_t* param_schema() const noexcept;
+    bool set_param_frame(const float* values, uint32_t count) const noexcept;
+
     const clap_plugin_descriptor_t* descriptor() const noexcept;
     state                           current_state() const noexcept;
 
@@ -97,7 +105,8 @@ class plugin_instance {
     const clap_plugin_t*       plugin_{nullptr};
     state                      state_{state::initialized};
 
-    const clap_plugin_tap_bus_t* tap_bus_ext_{nullptr};
+    const clap_plugin_tap_bus_t*   tap_bus_ext_{nullptr};
+    const clap_plugin_param_bus_t* param_bus_ext_{nullptr};
 
     std::vector<clap_audio_port_info_t> in_ports_;
     std::vector<clap_audio_port_info_t> out_ports_;

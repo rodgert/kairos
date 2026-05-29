@@ -3,6 +3,7 @@ include(Catch)
 
 add_subdirectory(stub_plugin)
 add_subdirectory(stub_tap_bus_plugin)
+add_subdirectory(stub_param_bus_plugin)
 
 # ---------------------------------------------------------------------------
 # WASM bridge test: generate a phasor .wasm at configure time if faust is
@@ -47,6 +48,7 @@ set(_kairos_test_sources
     test_plugin_graph.cpp
     test_builtin_plugins.cpp
     test_tap_bus_host.cpp
+    test_param_bus_host.cpp
 )
 
 if(KAIROS_WASM_BRIDGE)
@@ -71,6 +73,7 @@ endif()
 target_compile_definitions(kairos-tests PRIVATE
     KAIROS_STUB_PLUGIN_PATH="$<TARGET_FILE:kairos-stub-plugin>"
     KAIROS_STUB_TAP_BUS_PLUGIN_PATH="$<TARGET_FILE:kairos-stub-tap-bus-plugin>"
+    KAIROS_STUB_PARAM_BUS_PLUGIN_PATH="$<TARGET_FILE:kairos-stub-param-bus-plugin>"
     KAIROS_TEST_WASM_PATH="${_kairos_test_wasm_path}"
 )
 
