@@ -161,11 +161,16 @@ int main(int argc, char* argv[]) {
     // Beat scheduler — shared between control thread (push) and process loop (tick).
     nomos::rt::event_scheduler scheduler;
 
+    // Link peer — constructed before the control thread so we can pass a pointer.
+    nomos::rt::link_peer link{initial_bpm};
+    link.enable(true);
+
     // Control thread — IPC + session + graph management
     kairos::control_thread::config ctrl_cfg{
         .socket_path   = socket_path,
         .db_path       = db_path,
         .sched_staging = &scheduler.staging(),
+        .link_peer     = &link,
         .plugins       = std::move(plugins),
         .host          = kairos::kairos_host(),
         .sample_rate   = sample_rate,
@@ -174,10 +179,6 @@ int main(int argc, char* argv[]) {
     };
     kairos::control_thread ctrl{ctrl_cfg, param_queue, ipc_in_queue};
     ctrl.start();
-
-    // Link peer
-    nomos::rt::link_peer link{initial_bpm};
-    link.enable(true);
 
     // MIDI I/O
     nomos::rt::midi_io midi;

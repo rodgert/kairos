@@ -2,6 +2,7 @@
 #include <kairos/control_thread.hpp>
 #include <nomos/rt/ipc.hpp>
 
+#include "link_peer.hpp"
 #include "plugin_discovery.hpp"
 
 #include <edn/parser.hpp>
@@ -168,6 +169,37 @@ void control_thread::dispatch_extension(int conn_fd, const nomos::rt::ipc::messa
         mgr->hot_swap_node(id_v->get<edn::keyword>(), path_v->get<std::string>());
         break;
     }
+
+    case nomos::rt::ipc::msg_link_set_tempo: {
+        if (!kairos_cfg_.link_peer || msg.payload.empty())
+            break;
+        const std::string_view text{reinterpret_cast<const char*>(msg.payload.data()),
+                                    msg.payload.size()};
+        auto parsed = edn::parse(text);
+        if (!parsed || !parsed->is<edn::map>())
+            break;
+        const auto& m  = parsed->get<edn::map>();
+        const auto* bv = m.find_kw("bpm");
+        if (!bv)
+            break;
+        double bpm = 0.0;
+        if (bv->is<double>())        bpm = bv->get<double>();
+        else if (bv->is<int64_t>())  bpm = static_cast<double>(bv->get<int64_t>());
+        else break;
+        if (bpm > 0.0)
+            kairos_cfg_.link_peer->set_tempo(bpm, kairos_cfg_.link_peer->now());
+        break;
+    }
+
+    case nomos::rt::ipc::msg_link_start_transport:
+        if (kairos_cfg_.link_peer)
+            kairos_cfg_.link_peer->start_transport(kairos_cfg_.link_peer->now());
+        break;
+
+    case nomos::rt::ipc::msg_link_stop_transport:
+        if (kairos_cfg_.link_peer)
+            kairos_cfg_.link_peer->stop_transport(kairos_cfg_.link_peer->now());
+        break;
 
     default:
         break;

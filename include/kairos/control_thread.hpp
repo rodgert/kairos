@@ -10,6 +10,8 @@
 #include <optional>
 #include <string>
 
+namespace nomos::rt { class link_peer; }
+
 namespace kairos {
 
 // CLAP-aware control thread.
@@ -26,6 +28,7 @@ class control_thread : public nomos::rt::rt_control_thread {
         std::string                     socket_path;
         std::string                     db_path;
         nomos::rt::sched_staging_queue* sched_staging{nullptr};
+        nomos::rt::link_peer*           link_peer{nullptr};
         plugin_registry                 plugins;
         const clap_host_t*              host{nullptr};
         double                          sample_rate{48000.0};
