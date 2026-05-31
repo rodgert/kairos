@@ -186,7 +186,8 @@ TEST_CASE("builtin audio-passthrough: copies samples through", "[builtin]") {
 }
 
 TEST_CASE("plugin_graph_manager: passthrough activates via set_audio_config", "[builtin]") {
-    kairos::plugin_registry reg{{"org.cljseq.kairos.midi-passthrough", "kairos:passthrough"}};
+    kairos::plugin_registry reg{{"org.cljseq.kairos.midi-passthrough",
+                                  kairos::plugin_info{.path = "kairos:passthrough"}}};
 
     kairos::plugin_graph graph{
         .nodes = {{edn::keyword{"test/pt"}, "org.cljseq.kairos.midi-passthrough", {}}},

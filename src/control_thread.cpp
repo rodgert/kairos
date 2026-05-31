@@ -2,9 +2,46 @@
 #include <kairos/control_thread.hpp>
 #include <nomos/rt/ipc.hpp>
 
+#include "plugin_discovery.hpp"
+
 #include <edn/parser.hpp>
 
+#include <string>
+
 namespace kairos {
+
+namespace {
+
+std::string edn_escape(const std::string& s) {
+    std::string out;
+    out.reserve(s.size());
+    for (char c : s) {
+        if (c == '"')       out += "\\\"";
+        else if (c == '\\') out += "\\\\";
+        else                out += c;
+    }
+    return out;
+}
+
+std::string build_plugin_list_edn(const plugin_registry& reg) {
+    std::string edn;
+    edn += "[";
+    bool first = true;
+    for (const auto& [id, info] : reg) {
+        if (!first) edn += " ";
+        first = false;
+        edn += "{:id \"";      edn += edn_escape(id);
+        edn += "\" :name \"";  edn += edn_escape(info.name);
+        edn += "\" :vendor \""; edn += edn_escape(info.vendor);
+        edn += "\" :version \""; edn += edn_escape(info.version);
+        edn += "\" :path \"";  edn += edn_escape(info.path);
+        edn += "\"}";
+    }
+    edn += "]";
+    return edn;
+}
+
+} // namespace
 
 control_thread::control_thread(config cfg, nomos::rt::param_queue& queue,
                                nomos::rt::input_event_queue& in_queue)
@@ -84,6 +121,28 @@ void control_thread::dispatch_extension(int conn_fd, const nomos::rt::ipc::messa
     case nomos::rt::ipc::msg_graph_reset:
         graph_.store(std::make_unique<plugin_graph_manager>());
         break;
+
+    case nomos::rt::ipc::msg_plugin_list_req: {
+        std::vector<std::string> extra_paths;
+        if (!msg.payload.empty()) {
+            const std::string_view text{reinterpret_cast<const char*>(msg.payload.data()),
+                                        msg.payload.size()};
+            auto parsed = edn::parse(text);
+            if (parsed && parsed->is<edn::map>()) {
+                const auto& m = parsed->get<edn::map>();
+                if (const auto* pv = m.find_kw("extra-paths");
+                    pv && pv->is<edn::vector>()) {
+                    for (const auto& item : pv->get<edn::vector>().items)
+                        if (item.is<std::string>())
+                            extra_paths.push_back(item.get<std::string>());
+                }
+            }
+        }
+        const auto  reg = discover_plugins(extra_paths);
+        const auto  edn = build_plugin_list_edn(reg);
+        push_frame(nomos::rt::ipc::msg_plugin_list_resp, edn);
+        break;
+    }
 
     case nomos::rt::ipc::msg_wasm_hot_swap: {
         if (msg.payload.empty())

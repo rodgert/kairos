@@ -208,7 +208,7 @@ result<std::monostate, plugin_error> plugin_graph_manager::load(const plugin_gra
         if (it == registry.end())
             return unexpected<plugin_error>{plugin_error::load_failed};
 
-        auto inst = plugin_instance::load(it->second, node.plugin, host);
+        auto inst = plugin_instance::load(it->second.path, node.plugin, host);
         if (!inst)
             return unexpected<plugin_error>{inst.error()};
 

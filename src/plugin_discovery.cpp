@@ -46,8 +46,15 @@ namespace {
             const uint32_t n = factory->get_plugin_count(factory);
             for (uint32_t i = 0; i < n; ++i) {
                 const auto* desc = factory->get_plugin_descriptor(factory, i);
-                if (desc && desc->id && desc->id[0] != '\0')
-                    out.emplace(std::string{desc->id}, binary);
+                if (!desc || !desc->id || desc->id[0] == '\0')
+                    continue;
+                plugin_info info;
+                info.path        = binary;
+                info.name        = desc->name        ? desc->name        : "";
+                info.vendor      = desc->vendor      ? desc->vendor      : "";
+                info.version     = desc->version     ? desc->version     : "";
+                info.description = desc->description ? desc->description : "";
+                out.emplace(std::string{desc->id}, std::move(info));
             }
         }
 

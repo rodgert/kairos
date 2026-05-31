@@ -9,8 +9,17 @@
 
 namespace kairos {
 
-// Maps stable plugin identifier (e.g. "org.cljseq.dsp/fm-voice") to .clap file path.
-using plugin_registry = std::unordered_map<std::string, std::string>;
+// Metadata for a discovered CLAP plugin.
+struct plugin_info {
+    std::string path;        // absolute binary path inside the .clap bundle
+    std::string name;        // human-readable plugin name
+    std::string vendor;      // vendor / manufacturer string
+    std::string version;     // version string (e.g. "1.2.0")
+    std::string description; // short description
+};
+
+// Maps stable plugin identifier (e.g. "org.cljseq.dsp/fm-voice") to plugin metadata.
+using plugin_registry = std::unordered_map<std::string, plugin_info>;
 
 // A single plugin instance in the audio graph.
 // `plugin` is the stable string identifier used by the plugin registry

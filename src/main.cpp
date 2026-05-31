@@ -92,7 +92,8 @@ int main(int argc, char* argv[]) {
             std::string pair{argv[++i]};
             const auto  sep = pair.find('=');
             if (sep != std::string::npos)
-                explicit_plugins.emplace(pair.substr(0, sep), pair.substr(sep + 1));
+                explicit_plugins.emplace(pair.substr(0, sep),
+                                         kairos::plugin_info{.path = pair.substr(sep + 1)});
         } else if (arg == "--version") {
             std::cout << "kairos v" << kairos::version() << "\n";
             return EXIT_SUCCESS;
@@ -132,23 +133,23 @@ int main(int argc, char* argv[]) {
     kairos::plugin_registry plugins;
 
     // Always available — no path needed.
-    plugins[kairos::k_passthrough_plugin_id]       = "kairos:passthrough";
-    plugins[kairos::k_audio_passthrough_plugin_id] = "kairos:audio-passthrough";
+    plugins[kairos::k_passthrough_plugin_id]       = kairos::plugin_info{.path = "kairos:passthrough"};
+    plugins[kairos::k_audio_passthrough_plugin_id] = kairos::plugin_info{.path = "kairos:audio-passthrough"};
 
     // Discover installed .clap files from platform default paths.
     if (!no_discover) {
         auto discovered = kairos::discover_plugins(extra_search_paths);
-        for (auto& [id, path] : discovered)
-            plugins.emplace(id, std::move(path)); // don't overwrite builtins
+        for (auto& [id, info] : discovered)
+            plugins.emplace(id, std::move(info)); // don't overwrite builtins
     }
 
     // Explicit --plugin flags win over discovery.
-    for (auto& [id, path] : explicit_plugins)
-        plugins.insert_or_assign(id, std::move(path));
+    for (auto& [id, info] : explicit_plugins)
+        plugins.insert_or_assign(id, std::move(info));
 
     std::cerr << "[kairos] plugin registry: " << plugins.size() << " plugin(s)\n";
-    for (const auto& [id, path] : plugins)
-        std::cerr << "  " << id << " → " << path << "\n";
+    for (const auto& [id, info] : plugins)
+        std::cerr << "  " << id << " → " << info.path << "\n";
 
     // Shared queues
     nomos::rt::param_queue       param_queue;

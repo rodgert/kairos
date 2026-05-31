@@ -6,7 +6,7 @@
 #include <kairos/plugin_host.hpp>
 
 TEST_CASE("plugin_graph_manager: load single node", "[plugin_graph]") {
-    kairos::plugin_registry reg{{"org.cljseq.test/stub", KAIROS_STUB_PLUGIN_PATH}};
+    kairos::plugin_registry reg{{"org.cljseq.test/stub", kairos::plugin_info{.path = KAIROS_STUB_PLUGIN_PATH}}};
 
     kairos::plugin_graph graph{.nodes = {{edn::keyword{"test/node-1"}, "org.cljseq.test/stub", {}}},
                                .edges = {}};
@@ -33,7 +33,7 @@ TEST_CASE("plugin_graph_manager: unknown plugin returns load_failed", "[plugin_g
 }
 
 TEST_CASE("plugin_graph_manager: multi-node load and activate", "[plugin_graph]") {
-    kairos::plugin_registry reg{{"org.cljseq.test/stub", KAIROS_STUB_PLUGIN_PATH}};
+    kairos::plugin_registry reg{{"org.cljseq.test/stub", kairos::plugin_info{.path = KAIROS_STUB_PLUGIN_PATH}}};
 
     kairos::plugin_graph graph{.nodes = {{edn::keyword{"test/voice"}, "org.cljseq.test/stub", {}},
                                          {edn::keyword{"test/fx"}, "org.cljseq.test/stub", {}}},
@@ -50,7 +50,7 @@ TEST_CASE("plugin_graph_manager: multi-node load and activate", "[plugin_graph]"
 }
 
 TEST_CASE("plugin_graph_manager: reset clears all nodes", "[plugin_graph]") {
-    kairos::plugin_registry reg{{"org.cljseq.test/stub", KAIROS_STUB_PLUGIN_PATH}};
+    kairos::plugin_registry reg{{"org.cljseq.test/stub", kairos::plugin_info{.path = KAIROS_STUB_PLUGIN_PATH}}};
 
     kairos::plugin_graph graph{.nodes = {{edn::keyword{"test/node-1"}, "org.cljseq.test/stub", {}}},
                                .edges = {}};
@@ -63,7 +63,7 @@ TEST_CASE("plugin_graph_manager: reset clears all nodes", "[plugin_graph]") {
 }
 
 TEST_CASE("plugin_graph_manager: reload replaces previous graph", "[plugin_graph]") {
-    kairos::plugin_registry reg{{"org.cljseq.test/stub", KAIROS_STUB_PLUGIN_PATH}};
+    kairos::plugin_registry reg{{"org.cljseq.test/stub", kairos::plugin_info{.path = KAIROS_STUB_PLUGIN_PATH}}};
 
     kairos::plugin_graph g1{.nodes = {{edn::keyword{"test/a"}, "org.cljseq.test/stub", {}},
                                       {edn::keyword{"test/b"}, "org.cljseq.test/stub", {}}},
