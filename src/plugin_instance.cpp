@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: LGPL-2.1-or-later
 #include <kairos/plugin_instance.hpp>
+#include <kairos/clap_kairos_hot_swap.h>
 #include <kairos/clap_kairos_param_bus.h>
 #include <kairos/clap_kairos_patch_bus.h>
 #include <kairos/clap_kairos_tap_bus.h>
@@ -223,21 +224,17 @@ result<std::monostate, plugin_error> plugin_instance::hot_swap(const std::string
     if (state_ != state::activated && state_ != state::processing)
         return unexpected<plugin_error>{plugin_error::wrong_state};
 
-#ifdef KAIROS_WASM_BRIDGE
-    const auto* ext = static_cast<const kairos_hot_swap_t*>(
-        plugin_->get_extension(plugin_, k_kairos_ext_hot_swap));
+    // Works for any plugin implementing CLAP_EXT_KAIROS_HOT_SWAP — both
+    // wasm_bridge_plugin and kairos-grid's WasmGridModule slot.
+    const auto* ext = static_cast<const clap_kairos_hot_swap_t*>(
+        plugin_->get_extension(plugin_, CLAP_EXT_KAIROS_HOT_SWAP));
     if (!ext)
         return unexpected<plugin_error>{plugin_error::hot_swap_unsupported};
 
-    // request() performs a full RCU swap of the WASM DSP state — no stop/start needed.
     if (!ext->request(plugin_, new_wasm_path.c_str()))
         return unexpected<plugin_error>{plugin_error::hot_swap_failed};
 
     return std::monostate{};
-#else
-    (void)new_wasm_path;
-    return unexpected<plugin_error>{plugin_error::hot_swap_unsupported};
-#endif
 }
 
 const clap_kairos_tap_schema_t* plugin_instance::tap_schema() const noexcept {
