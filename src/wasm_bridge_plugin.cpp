@@ -946,7 +946,9 @@ namespace {
     // Hot-swap extension
     // ---------------------------------------------------------------------------
 
-    static bool wp_hot_swap_request(const clap_plugin_t* plugin, const char* new_path) noexcept {
+    // old_wasm_path ignored — the wasm_bridge_plugin always has exactly one WASM slot.
+    static bool wp_hot_swap_request(const clap_plugin_t* plugin, const char* new_path,
+                                    const char* /*old_wasm_path*/) noexcept {
         auto* inst = static_cast<WasmBridgeInstance*>(plugin->plugin_data);
         return do_hot_swap(inst, std::string{new_path});
     }

@@ -74,7 +74,9 @@ class plugin_instance {
     // Returns hot_swap_unsupported if the plugin lacks the kairos hot-swap extension.
     // Returns hot_swap_failed if the new path is unreadable or has a different topology.
     // Only valid in activated or processing state.
-    nomos::rt::result<std::monostate, plugin_error> hot_swap(const std::string& new_wasm_path);
+    // old_wasm_path identifies which WASM slot to replace (empty = first slot).
+    nomos::rt::result<std::monostate, plugin_error> hot_swap(const std::string& new_wasm_path,
+                                                             const std::string& old_wasm_path = {});
 
     // Tap-bus — kairos/tap-bus custom CLAP extension.
     // Returns nullptr if the plugin does not expose the extension.

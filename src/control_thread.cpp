@@ -13,34 +13,43 @@ namespace kairos {
 
 namespace {
 
-std::string edn_escape(const std::string& s) {
-    std::string out;
-    out.reserve(s.size());
-    for (char c : s) {
-        if (c == '"')       out += "\\\"";
-        else if (c == '\\') out += "\\\\";
-        else                out += c;
+    std::string edn_escape(const std::string& s) {
+        std::string out;
+        out.reserve(s.size());
+        for (char c : s) {
+            if (c == '"')
+                out += "\\\"";
+            else if (c == '\\')
+                out += "\\\\";
+            else
+                out += c;
+        }
+        return out;
     }
-    return out;
-}
 
-std::string build_plugin_list_edn(const plugin_registry& reg) {
-    std::string edn;
-    edn += "[";
-    bool first = true;
-    for (const auto& [id, info] : reg) {
-        if (!first) edn += " ";
-        first = false;
-        edn += "{:id \"";      edn += edn_escape(id);
-        edn += "\" :name \"";  edn += edn_escape(info.name);
-        edn += "\" :vendor \""; edn += edn_escape(info.vendor);
-        edn += "\" :version \""; edn += edn_escape(info.version);
-        edn += "\" :path \"";  edn += edn_escape(info.path);
-        edn += "\"}";
+    std::string build_plugin_list_edn(const plugin_registry& reg) {
+        std::string edn;
+        edn += "[";
+        bool first = true;
+        for (const auto& [id, info] : reg) {
+            if (!first)
+                edn += " ";
+            first = false;
+            edn += "{:id \"";
+            edn += edn_escape(id);
+            edn += "\" :name \"";
+            edn += edn_escape(info.name);
+            edn += "\" :vendor \"";
+            edn += edn_escape(info.vendor);
+            edn += "\" :version \"";
+            edn += edn_escape(info.version);
+            edn += "\" :path \"";
+            edn += edn_escape(info.path);
+            edn += "\"}";
+        }
+        edn += "]";
+        return edn;
     }
-    edn += "]";
-    return edn;
-}
 
 } // namespace
 
@@ -128,19 +137,18 @@ void control_thread::dispatch_extension(int conn_fd, const nomos::rt::ipc::messa
         if (!msg.payload.empty()) {
             const std::string_view text{reinterpret_cast<const char*>(msg.payload.data()),
                                         msg.payload.size()};
-            auto parsed = edn::parse(text);
+            auto                   parsed = edn::parse(text);
             if (parsed && parsed->is<edn::map>()) {
                 const auto& m = parsed->get<edn::map>();
-                if (const auto* pv = m.find_kw("extra-paths");
-                    pv && pv->is<edn::vector>()) {
+                if (const auto* pv = m.find_kw("extra-paths"); pv && pv->is<edn::vector>()) {
                     for (const auto& item : pv->get<edn::vector>().items)
                         if (item.is<std::string>())
                             extra_paths.push_back(item.get<std::string>());
                 }
             }
         }
-        const auto  reg = discover_plugins(extra_paths);
-        const auto  edn = build_plugin_list_edn(reg);
+        const auto reg = discover_plugins(extra_paths);
+        const auto edn = build_plugin_list_edn(reg);
         push_frame(nomos::rt::ipc::msg_plugin_list_resp, edn);
         break;
     }
@@ -153,20 +161,23 @@ void control_thread::dispatch_extension(int conn_fd, const nomos::rt::ipc::messa
         auto                   parsed = edn::parse(text);
         if (!parsed || !parsed->is<edn::map>())
             break;
-        const auto& m      = parsed->get<edn::map>();
-        const auto* id_v   = m.find_kw("node-id");
-        const auto* path_v = m.find_kw("wasm-path");
+        const auto& m          = parsed->get<edn::map>();
+        const auto* id_v       = m.find_kw("node-id");
+        const auto* path_v     = m.find_kw("wasm-path");
+        const auto* old_path_v = m.find_kw("old-wasm-path");
         if (!id_v || !id_v->is<edn::keyword>())
             break;
         if (!path_v || !path_v->is<std::string>())
             break;
+        const std::string old_path =
+            (old_path_v && old_path_v->is<std::string>()) ? old_path_v->get<std::string>() : "";
         // unsafe_get() is safe here: the control thread is the sole writer of graph_,
         // so there is no concurrent store(). We must NOT hold a graph_.read() guard
         // while calling hot_swap_node — synchronize_rcu() inside would deadlock.
         auto* mgr = graph_.unsafe_get();
         if (!mgr)
             break;
-        mgr->hot_swap_node(id_v->get<edn::keyword>(), path_v->get<std::string>());
+        mgr->hot_swap_node(id_v->get<edn::keyword>(), path_v->get<std::string>(), old_path);
         break;
     }
 
@@ -175,7 +186,7 @@ void control_thread::dispatch_extension(int conn_fd, const nomos::rt::ipc::messa
             break;
         const std::string_view text{reinterpret_cast<const char*>(msg.payload.data()),
                                     msg.payload.size()};
-        auto parsed = edn::parse(text);
+        auto                   parsed = edn::parse(text);
         if (!parsed || !parsed->is<edn::map>())
             break;
         const auto& m  = parsed->get<edn::map>();
@@ -183,9 +194,12 @@ void control_thread::dispatch_extension(int conn_fd, const nomos::rt::ipc::messa
         if (!bv)
             break;
         double bpm = 0.0;
-        if (bv->is<double>())        bpm = bv->get<double>();
-        else if (bv->is<int64_t>())  bpm = static_cast<double>(bv->get<int64_t>());
-        else break;
+        if (bv->is<double>())
+            bpm = bv->get<double>();
+        else if (bv->is<int64_t>())
+            bpm = static_cast<double>(bv->get<int64_t>());
+        else
+            break;
         if (bpm > 0.0)
             kairos_cfg_.link_peer->set_tempo(bpm, kairos_cfg_.link_peer->now());
         break;

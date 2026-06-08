@@ -69,8 +69,10 @@ class plugin_graph_manager {
     // Gapless hot-swap of the WASM module for a single node.
     // Delegates to plugin_instance::hot_swap() which uses the kairos RCU extension.
     // Returns node_not_found if no node has the given id.
-    nomos::rt::result<std::monostate, plugin_error> hot_swap_node(const edn::keyword& id,
-                                                                  const std::string& new_wasm_path);
+    // old_wasm_path identifies which WASM slot to replace (empty = first slot).
+    nomos::rt::result<std::monostate, plugin_error>
+    hot_swap_node(const edn::keyword& id, const std::string& new_wasm_path,
+                  const std::string& old_wasm_path = {});
 
   private:
     struct node_entry {

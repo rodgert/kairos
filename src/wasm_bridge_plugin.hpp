@@ -30,7 +30,7 @@ const clap_plugin_factory_t* get_wasm_bridge_factory() noexcept;
 // Hot-swap extension — types now defined in the public header.
 // Aliases kept here so wasm_bridge_plugin.cpp compiles unchanged.
 // ---------------------------------------------------------------------------
-constexpr const char* k_kairos_ext_hot_swap = CLAP_EXT_KAIROS_HOT_SWAP;
-using kairos_hot_swap_t = ::clap_kairos_hot_swap_t;
+constexpr const char* k_kairos_ext_hot_swap = CLAP_EXT_KAIROS_HOT_SWAP; // "/2"
+using kairos_hot_swap_t                     = ::clap_kairos_hot_swap_t;
 
 } // namespace kairos
