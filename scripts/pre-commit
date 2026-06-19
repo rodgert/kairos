@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# cljseq pre-commit hook
+# nous pre-commit hook
 # Blocks commits that introduce secrets, hardcoded personal paths, or
 # credential files, and verifies C++ formatting via clang-format.
 # Add patterns here as new anti-patterns are discovered.
