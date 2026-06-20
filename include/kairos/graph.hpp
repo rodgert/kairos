@@ -18,12 +18,12 @@ struct plugin_info {
     std::string description; // short description
 };
 
-// Maps stable plugin identifier (e.g. "org.cljseq.dsp/fm-voice") to plugin metadata.
+// Maps stable plugin identifier (e.g. "org.nomos-studio.dsp/fm-voice") to plugin metadata.
 using plugin_registry = std::unordered_map<std::string, plugin_info>;
 
 // A single plugin instance in the audio graph.
 // `plugin` is the stable string identifier used by the plugin registry
-// (e.g. "org.cljseq.dsp/fm-voice"); CLAP param IDs are resolved at graph load.
+// (e.g. "org.nomos-studio.dsp/fm-voice"); CLAP param IDs are resolved at graph load.
 struct plugin_node {
     edn::keyword id;     // e.g. :synth/voice-1
     std::string  plugin; // plugin registry key

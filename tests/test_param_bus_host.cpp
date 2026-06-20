@@ -16,14 +16,15 @@
 // ---------------------------------------------------------------------------
 
 TEST_CASE("param-bus host: param_schema() returns null for non-param-bus plugin", "[param_bus]") {
-    auto inst = kairos::plugin_instance::load(KAIROS_STUB_PLUGIN_PATH, "org.cljseq.test/stub",
+    auto inst = kairos::plugin_instance::load(KAIROS_STUB_PLUGIN_PATH, "org.nomos-studio.test/stub",
                                               kairos::kairos_host());
     REQUIRE(inst);
     REQUIRE(inst->param_schema() == nullptr);
 }
 
-TEST_CASE("param-bus host: set_param_frame() returns false for non-param-bus plugin", "[param_bus]") {
-    auto inst = kairos::plugin_instance::load(KAIROS_STUB_PLUGIN_PATH, "org.cljseq.test/stub",
+TEST_CASE("param-bus host: set_param_frame() returns false for non-param-bus plugin",
+          "[param_bus]") {
+    auto inst = kairos::plugin_instance::load(KAIROS_STUB_PLUGIN_PATH, "org.nomos-studio.test/stub",
                                               kairos::kairos_host());
     REQUIRE(inst);
 
@@ -35,10 +36,10 @@ TEST_CASE("param-bus host: set_param_frame() returns false for non-param-bus plu
 // Plugins that do expose param-bus
 // ---------------------------------------------------------------------------
 
-TEST_CASE("param-bus host: param_schema() non-null after init (engine built in init)", "[param_bus]") {
-    auto inst = kairos::plugin_instance::load(KAIROS_STUB_PARAM_BUS_PLUGIN_PATH,
-                                              "org.nomos.test/stub-param-bus",
-                                              kairos::kairos_host());
+TEST_CASE("param-bus host: param_schema() non-null after init (engine built in init)",
+          "[param_bus]") {
+    auto inst = kairos::plugin_instance::load(
+        KAIROS_STUB_PARAM_BUS_PLUGIN_PATH, "org.nomos.test/stub-param-bus", kairos::kairos_host());
     REQUIRE(inst);
     // The stub builds its schema on activate(); before that epoch == 0.
     const auto* schema = inst->param_schema();
@@ -47,9 +48,8 @@ TEST_CASE("param-bus host: param_schema() non-null after init (engine built in i
 }
 
 TEST_CASE("param-bus host: param_schema() populated after activate", "[param_bus]") {
-    auto inst = kairos::plugin_instance::load(KAIROS_STUB_PARAM_BUS_PLUGIN_PATH,
-                                              "org.nomos.test/stub-param-bus",
-                                              kairos::kairos_host());
+    auto inst = kairos::plugin_instance::load(
+        KAIROS_STUB_PARAM_BUS_PLUGIN_PATH, "org.nomos.test/stub-param-bus", kairos::kairos_host());
     REQUIRE(inst);
     REQUIRE(inst->activate(48000.0, 32, 512));
 
@@ -67,9 +67,8 @@ TEST_CASE("param-bus host: param_schema() populated after activate", "[param_bus
 }
 
 TEST_CASE("param-bus host: epoch increments on re-activate", "[param_bus]") {
-    auto inst = kairos::plugin_instance::load(KAIROS_STUB_PARAM_BUS_PLUGIN_PATH,
-                                              "org.nomos.test/stub-param-bus",
-                                              kairos::kairos_host());
+    auto inst = kairos::plugin_instance::load(
+        KAIROS_STUB_PARAM_BUS_PLUGIN_PATH, "org.nomos.test/stub-param-bus", kairos::kairos_host());
     REQUIRE(inst);
     REQUIRE(inst->activate(48000.0, 32, 512));
     const uint32_t epoch1 = inst->param_schema()->epoch;
@@ -83,9 +82,8 @@ TEST_CASE("param-bus host: epoch increments on re-activate", "[param_bus]") {
 }
 
 TEST_CASE("param-bus host: set_param_frame() returns true after activate", "[param_bus]") {
-    auto inst = kairos::plugin_instance::load(KAIROS_STUB_PARAM_BUS_PLUGIN_PATH,
-                                              "org.nomos.test/stub-param-bus",
-                                              kairos::kairos_host());
+    auto inst = kairos::plugin_instance::load(
+        KAIROS_STUB_PARAM_BUS_PLUGIN_PATH, "org.nomos.test/stub-param-bus", kairos::kairos_host());
     REQUIRE(inst);
     REQUIRE(inst->activate(48000.0, 32, 512));
 
@@ -96,9 +94,8 @@ TEST_CASE("param-bus host: set_param_frame() returns true after activate", "[par
 }
 
 TEST_CASE("param-bus host: epoch stable across set_param_frame() calls", "[param_bus]") {
-    auto inst = kairos::plugin_instance::load(KAIROS_STUB_PARAM_BUS_PLUGIN_PATH,
-                                              "org.nomos.test/stub-param-bus",
-                                              kairos::kairos_host());
+    auto inst = kairos::plugin_instance::load(
+        KAIROS_STUB_PARAM_BUS_PLUGIN_PATH, "org.nomos.test/stub-param-bus", kairos::kairos_host());
     REQUIRE(inst);
     REQUIRE(inst->activate(48000.0, 32, 512));
 
@@ -113,14 +110,13 @@ TEST_CASE("param-bus host: epoch stable across set_param_frame() calls", "[param
 }
 
 TEST_CASE("param-bus host: plugin_instance move preserves param_bus_ext", "[param_bus]") {
-    auto inst = kairos::plugin_instance::load(KAIROS_STUB_PARAM_BUS_PLUGIN_PATH,
-                                              "org.nomos.test/stub-param-bus",
-                                              kairos::kairos_host());
+    auto inst = kairos::plugin_instance::load(
+        KAIROS_STUB_PARAM_BUS_PLUGIN_PATH, "org.nomos.test/stub-param-bus", kairos::kairos_host());
     REQUIRE(inst);
     REQUIRE(inst->activate(48000.0, 32, 512));
 
-    kairos::plugin_instance moved = std::move(*inst);
-    const auto* schema = moved.param_schema();
+    kairos::plugin_instance moved  = std::move(*inst);
+    const auto*             schema = moved.param_schema();
     REQUIRE(schema != nullptr);
     REQUIRE(schema->count == 2);
 

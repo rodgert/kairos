@@ -16,7 +16,7 @@
 // ---------------------------------------------------------------------------
 
 TEST_CASE("patch-bus host: push_patch() returns false for non-patch-bus plugin", "[patch_bus]") {
-    auto inst = kairos::plugin_instance::load(KAIROS_STUB_PLUGIN_PATH, "org.cljseq.test/stub",
+    auto inst = kairos::plugin_instance::load(KAIROS_STUB_PLUGIN_PATH, "org.nomos-studio.test/stub",
                                               kairos::kairos_host());
     REQUIRE(inst);
 
@@ -25,7 +25,7 @@ TEST_CASE("patch-bus host: push_patch() returns false for non-patch-bus plugin",
 }
 
 TEST_CASE("patch-bus host: get_patch() returns null for non-patch-bus plugin", "[patch_bus]") {
-    auto inst = kairos::plugin_instance::load(KAIROS_STUB_PLUGIN_PATH, "org.cljseq.test/stub",
+    auto inst = kairos::plugin_instance::load(KAIROS_STUB_PLUGIN_PATH, "org.nomos-studio.test/stub",
                                               kairos::kairos_host());
     REQUIRE(inst);
     REQUIRE(inst->get_patch() == nullptr);
@@ -36,17 +36,15 @@ TEST_CASE("patch-bus host: get_patch() returns null for non-patch-bus plugin", "
 // ---------------------------------------------------------------------------
 
 TEST_CASE("patch-bus host: get_patch() returns null before any push", "[patch_bus]") {
-    auto inst = kairos::plugin_instance::load(KAIROS_STUB_PATCH_BUS_PLUGIN_PATH,
-                                              "org.nomos.test/stub-patch-bus",
-                                              kairos::kairos_host());
+    auto inst = kairos::plugin_instance::load(
+        KAIROS_STUB_PATCH_BUS_PLUGIN_PATH, "org.nomos.test/stub-patch-bus", kairos::kairos_host());
     REQUIRE(inst);
     REQUIRE(inst->get_patch() == nullptr);
 }
 
 TEST_CASE("patch-bus host: push_patch() returns true for non-null descriptor", "[patch_bus]") {
-    auto inst = kairos::plugin_instance::load(KAIROS_STUB_PATCH_BUS_PLUGIN_PATH,
-                                              "org.nomos.test/stub-patch-bus",
-                                              kairos::kairos_host());
+    auto inst = kairos::plugin_instance::load(
+        KAIROS_STUB_PATCH_BUS_PLUGIN_PATH, "org.nomos.test/stub-patch-bus", kairos::kairos_host());
     REQUIRE(inst);
 
     const char* edn = "{:modules [{:type \"env\"}] :cables []}";
@@ -54,12 +52,11 @@ TEST_CASE("patch-bus host: push_patch() returns true for non-null descriptor", "
 }
 
 TEST_CASE("patch-bus host: get_patch() returns stored descriptor after push", "[patch_bus]") {
-    auto inst = kairos::plugin_instance::load(KAIROS_STUB_PATCH_BUS_PLUGIN_PATH,
-                                              "org.nomos.test/stub-patch-bus",
-                                              kairos::kairos_host());
+    auto inst = kairos::plugin_instance::load(
+        KAIROS_STUB_PATCH_BUS_PLUGIN_PATH, "org.nomos.test/stub-patch-bus", kairos::kairos_host());
     REQUIRE(inst);
 
-    const char* edn = "{:modules [{:type \"env\"} {:type \"audio-out\"}] :cables []}";
+    const char*    edn = "{:modules [{:type \"env\"} {:type \"audio-out\"}] :cables []}";
     const uint32_t len = static_cast<uint32_t>(std::strlen(edn));
     REQUIRE(inst->push_patch(edn, len));
 
@@ -69,18 +66,16 @@ TEST_CASE("patch-bus host: get_patch() returns stored descriptor after push", "[
 }
 
 TEST_CASE("patch-bus host: push_patch() returns false for null descriptor", "[patch_bus]") {
-    auto inst = kairos::plugin_instance::load(KAIROS_STUB_PATCH_BUS_PLUGIN_PATH,
-                                              "org.nomos.test/stub-patch-bus",
-                                              kairos::kairos_host());
+    auto inst = kairos::plugin_instance::load(
+        KAIROS_STUB_PATCH_BUS_PLUGIN_PATH, "org.nomos.test/stub-patch-bus", kairos::kairos_host());
     REQUIRE(inst);
     REQUIRE(inst->push_patch(nullptr, 0) == false);
-    REQUIRE(inst->push_patch("",      0) == false);
+    REQUIRE(inst->push_patch("", 0) == false);
 }
 
 TEST_CASE("patch-bus host: plugin_instance move preserves patch_bus_ext", "[patch_bus]") {
-    auto inst = kairos::plugin_instance::load(KAIROS_STUB_PATCH_BUS_PLUGIN_PATH,
-                                              "org.nomos.test/stub-patch-bus",
-                                              kairos::kairos_host());
+    auto inst = kairos::plugin_instance::load(
+        KAIROS_STUB_PATCH_BUS_PLUGIN_PATH, "org.nomos.test/stub-patch-bus", kairos::kairos_host());
     REQUIRE(inst);
 
     const char* edn = "{:modules [] :cables []}";

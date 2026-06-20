@@ -69,17 +69,17 @@ clap_event_note_t make_note(uint16_t type, int16_t key, double vel) noexcept {
 
 TEST_CASE("builtin passthrough: load via kairos: path", "[builtin]") {
     auto result = kairos::plugin_instance::load(
-        "kairos:passthrough", "org.cljseq.kairos.midi-passthrough", kairos::kairos_host());
+        "kairos:passthrough", "org.nomos-studio.kairos.midi-passthrough", kairos::kairos_host());
 
     REQUIRE(result);
     REQUIRE(result->current_state() == kairos::plugin_instance::state::initialized);
     REQUIRE(result->descriptor() != nullptr);
-    REQUIRE(std::string{result->descriptor()->id} == "org.cljseq.kairos.midi-passthrough");
+    REQUIRE(std::string{result->descriptor()->id} == "org.nomos-studio.kairos.midi-passthrough");
 }
 
 TEST_CASE("builtin passthrough: full lifecycle", "[builtin]") {
     auto result = kairos::plugin_instance::load(
-        "kairos:passthrough", "org.cljseq.kairos.midi-passthrough", kairos::kairos_host());
+        "kairos:passthrough", "org.nomos-studio.kairos.midi-passthrough", kairos::kairos_host());
     REQUIRE(result);
 
     REQUIRE(result->activate(48000.0, 64, 64));
@@ -94,7 +94,7 @@ TEST_CASE("builtin passthrough: full lifecycle", "[builtin]") {
 
 TEST_CASE("builtin passthrough: forwards NOTE_ON and NOTE_OFF", "[builtin]") {
     auto inst = kairos::plugin_instance::load(
-        "kairos:passthrough", "org.cljseq.kairos.midi-passthrough", kairos::kairos_host());
+        "kairos:passthrough", "org.nomos-studio.kairos.midi-passthrough", kairos::kairos_host());
     REQUIRE(inst);
     REQUIRE(inst->activate(48000.0, 64, 64));
     REQUIRE(inst->start_processing());
@@ -120,8 +120,9 @@ TEST_CASE("builtin passthrough: forwards NOTE_ON and NOTE_OFF", "[builtin]") {
 }
 
 TEST_CASE("builtin audio-passthrough: declares stereo in and out ports", "[builtin]") {
-    auto result = kairos::plugin_instance::load(
-        "kairos:audio-passthrough", "org.cljseq.kairos.audio-passthrough", kairos::kairos_host());
+    auto result = kairos::plugin_instance::load("kairos:audio-passthrough",
+                                                "org.nomos-studio.kairos.audio-passthrough",
+                                                kairos::kairos_host());
 
     REQUIRE(result);
     REQUIRE(result->in_ports().size() == 1);
@@ -131,8 +132,9 @@ TEST_CASE("builtin audio-passthrough: declares stereo in and out ports", "[built
 }
 
 TEST_CASE("builtin audio-passthrough: copies samples through", "[builtin]") {
-    auto inst = kairos::plugin_instance::load(
-        "kairos:audio-passthrough", "org.cljseq.kairos.audio-passthrough", kairos::kairos_host());
+    auto inst = kairos::plugin_instance::load("kairos:audio-passthrough",
+                                              "org.nomos-studio.kairos.audio-passthrough",
+                                              kairos::kairos_host());
     REQUIRE(inst);
     REQUIRE(inst->activate(48000.0, 64, 64));
     REQUIRE(inst->start_processing());
@@ -186,11 +188,11 @@ TEST_CASE("builtin audio-passthrough: copies samples through", "[builtin]") {
 }
 
 TEST_CASE("plugin_graph_manager: passthrough activates via set_audio_config", "[builtin]") {
-    kairos::plugin_registry reg{{"org.cljseq.kairos.midi-passthrough",
-                                  kairos::plugin_info{.path = "kairos:passthrough"}}};
+    kairos::plugin_registry reg{{"org.nomos-studio.kairos.midi-passthrough",
+                                 kairos::plugin_info{.path = "kairos:passthrough"}}};
 
     kairos::plugin_graph graph{
-        .nodes = {{edn::keyword{"test/pt"}, "org.cljseq.kairos.midi-passthrough", {}}},
+        .nodes = {{edn::keyword{"test/pt"}, "org.nomos-studio.kairos.midi-passthrough", {}}},
         .edges = {}};
 
     kairos::plugin_graph_manager mgr;

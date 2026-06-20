@@ -30,7 +30,7 @@
 
 #include <clap/clap.h>
 
-#define CLAP_EXT_KAIROS_HOT_SWAP "org.cljseq.kairos.ext.hot-swap/2"
+#define CLAP_EXT_KAIROS_HOT_SWAP "org.nomos-studio.kairos.ext.hot-swap/2"
 
 // Plugin-side vtable returned by get_extension(CLAP_EXT_KAIROS_HOT_SWAP).
 typedef struct {
