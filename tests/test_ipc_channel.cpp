@@ -32,7 +32,7 @@ TEST_CASE("ipc_channel: round-trip empty payload", "[ipc_channel]") {
 TEST_CASE("ipc_channel: round-trip string payload", "[ipc_channel]") {
     auto [a, b] = make_pair();
 
-    const std::string payload = "{:id :org.cljseq/loop :name \"loop\"}";
+    const std::string payload = "{:id :org.nomos-studio/loop :name \"loop\"}";
     auto wres = nomos::rt::ipc::write_message(a, nomos::rt::ipc::msg_register_source, payload);
     REQUIRE(wres);
 

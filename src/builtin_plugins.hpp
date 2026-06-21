@@ -7,8 +7,8 @@ namespace kairos {
 
 // Canonical plugin IDs for built-in plugins.
 // Register with the matching "kairos:" path to use in a graph.
-constexpr const char* k_passthrough_plugin_id       = "org.cljseq.kairos.midi-passthrough";
-constexpr const char* k_audio_passthrough_plugin_id = "org.cljseq.kairos.audio-passthrough";
+constexpr const char* k_passthrough_plugin_id       = "org.nomos-studio.kairos.midi-passthrough";
+constexpr const char* k_audio_passthrough_plugin_id = "org.nomos-studio.kairos.audio-passthrough";
 
 // Sentinel path prefix recognised by plugin_instance::load().
 // Any path beginning with "kairos:" bypasses dlopen and uses get_builtin_factory().

@@ -38,9 +38,9 @@ static const char* const stub_features[] = {CLAP_PLUGIN_FEATURE_INSTRUMENT, null
 
 static const clap_plugin_descriptor_t stub_desc{
     .clap_version = CLAP_VERSION_INIT,
-    .id           = "org.cljseq.test/stub",
+    .id           = "org.nomos-studio.test/stub",
     .name         = "Stub",
-    .vendor       = "cljseq",
+    .vendor       = "nomos-studio",
     .url          = "",
     .manual_url   = "",
     .support_url  = "",

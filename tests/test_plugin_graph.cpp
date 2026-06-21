@@ -6,10 +6,11 @@
 #include <kairos/plugin_host.hpp>
 
 TEST_CASE("plugin_graph_manager: load single node", "[plugin_graph]") {
-    kairos::plugin_registry reg{{"org.cljseq.test/stub", kairos::plugin_info{.path = KAIROS_STUB_PLUGIN_PATH}}};
+    kairos::plugin_registry reg{
+        {"org.nomos-studio.test/stub", kairos::plugin_info{.path = KAIROS_STUB_PLUGIN_PATH}}};
 
-    kairos::plugin_graph graph{.nodes = {{edn::keyword{"test/node-1"}, "org.cljseq.test/stub", {}}},
-                               .edges = {}};
+    kairos::plugin_graph graph{
+        .nodes = {{edn::keyword{"test/node-1"}, "org.nomos-studio.test/stub", {}}}, .edges = {}};
 
     kairos::plugin_graph_manager mgr;
     auto                         result = mgr.load(graph, reg, kairos::kairos_host());
@@ -23,7 +24,7 @@ TEST_CASE("plugin_graph_manager: unknown plugin returns load_failed", "[plugin_g
     kairos::plugin_registry reg{};
 
     kairos::plugin_graph graph{
-        .nodes = {{edn::keyword{"test/node-1"}, "org.cljseq.dsp/unknown", {}}}, .edges = {}};
+        .nodes = {{edn::keyword{"test/node-1"}, "org.nomos-studio.dsp/unknown", {}}}, .edges = {}};
 
     kairos::plugin_graph_manager mgr;
     auto                         result = mgr.load(graph, reg, kairos::kairos_host());
@@ -33,12 +34,14 @@ TEST_CASE("plugin_graph_manager: unknown plugin returns load_failed", "[plugin_g
 }
 
 TEST_CASE("plugin_graph_manager: multi-node load and activate", "[plugin_graph]") {
-    kairos::plugin_registry reg{{"org.cljseq.test/stub", kairos::plugin_info{.path = KAIROS_STUB_PLUGIN_PATH}}};
+    kairos::plugin_registry reg{
+        {"org.nomos-studio.test/stub", kairos::plugin_info{.path = KAIROS_STUB_PLUGIN_PATH}}};
 
-    kairos::plugin_graph graph{.nodes = {{edn::keyword{"test/voice"}, "org.cljseq.test/stub", {}},
-                                         {edn::keyword{"test/fx"}, "org.cljseq.test/stub", {}}},
-                               .edges = {{edn::keyword{"test/voice"}, edn::keyword{"audio/out-0"},
-                                          edn::keyword{"test/fx"}, edn::keyword{"audio/in-0"}}}};
+    kairos::plugin_graph graph{
+        .nodes = {{edn::keyword{"test/voice"}, "org.nomos-studio.test/stub", {}},
+                  {edn::keyword{"test/fx"}, "org.nomos-studio.test/stub", {}}},
+        .edges = {{edn::keyword{"test/voice"}, edn::keyword{"audio/out-0"}, edn::keyword{"test/fx"},
+                   edn::keyword{"audio/in-0"}}}};
 
     kairos::plugin_graph_manager mgr;
     REQUIRE(mgr.load(graph, reg, kairos::kairos_host()));
@@ -50,10 +53,11 @@ TEST_CASE("plugin_graph_manager: multi-node load and activate", "[plugin_graph]"
 }
 
 TEST_CASE("plugin_graph_manager: reset clears all nodes", "[plugin_graph]") {
-    kairos::plugin_registry reg{{"org.cljseq.test/stub", kairos::plugin_info{.path = KAIROS_STUB_PLUGIN_PATH}}};
+    kairos::plugin_registry reg{
+        {"org.nomos-studio.test/stub", kairos::plugin_info{.path = KAIROS_STUB_PLUGIN_PATH}}};
 
-    kairos::plugin_graph graph{.nodes = {{edn::keyword{"test/node-1"}, "org.cljseq.test/stub", {}}},
-                               .edges = {}};
+    kairos::plugin_graph graph{
+        .nodes = {{edn::keyword{"test/node-1"}, "org.nomos-studio.test/stub", {}}}, .edges = {}};
 
     kairos::plugin_graph_manager mgr;
     REQUIRE(mgr.load(graph, reg, kairos::kairos_host()));
@@ -63,13 +67,14 @@ TEST_CASE("plugin_graph_manager: reset clears all nodes", "[plugin_graph]") {
 }
 
 TEST_CASE("plugin_graph_manager: reload replaces previous graph", "[plugin_graph]") {
-    kairos::plugin_registry reg{{"org.cljseq.test/stub", kairos::plugin_info{.path = KAIROS_STUB_PLUGIN_PATH}}};
+    kairos::plugin_registry reg{
+        {"org.nomos-studio.test/stub", kairos::plugin_info{.path = KAIROS_STUB_PLUGIN_PATH}}};
 
-    kairos::plugin_graph g1{.nodes = {{edn::keyword{"test/a"}, "org.cljseq.test/stub", {}},
-                                      {edn::keyword{"test/b"}, "org.cljseq.test/stub", {}}},
+    kairos::plugin_graph g1{.nodes = {{edn::keyword{"test/a"}, "org.nomos-studio.test/stub", {}},
+                                      {edn::keyword{"test/b"}, "org.nomos-studio.test/stub", {}}},
                             .edges = {}};
 
-    kairos::plugin_graph g2{.nodes = {{edn::keyword{"test/c"}, "org.cljseq.test/stub", {}}},
+    kairos::plugin_graph g2{.nodes = {{edn::keyword{"test/c"}, "org.nomos-studio.test/stub", {}}},
                             .edges = {}};
 
     kairos::plugin_graph_manager mgr;

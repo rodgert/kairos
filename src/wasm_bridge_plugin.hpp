@@ -11,13 +11,13 @@ namespace kairos {
 // Plugin ID prefix for the WASM bridge.
 // The full plugin ID encodes the .wasm file path:
 //
-//   "org.cljseq.kairos.wasm-bridge:/absolute/path/to/patch.wasm"
+//   "org.nomos-studio.kairos.wasm-bridge:/absolute/path/to/patch.wasm"
 //
 // Usage in a graph (path must be "kairos:" so plugin_instance::load routes
 // it through get_wasm_bridge_factory rather than dlopen):
 //   path      = "kairos:"
-//   plugin_id = "org.cljseq.kairos.wasm-bridge:/path/to/patch.wasm"
-constexpr const char* k_wasm_bridge_id_prefix = "org.cljseq.kairos.wasm-bridge:";
+//   plugin_id = "org.nomos-studio.kairos.wasm-bridge:/path/to/patch.wasm"
+constexpr const char* k_wasm_bridge_id_prefix = "org.nomos-studio.kairos.wasm-bridge:";
 
 // Returns the factory for WASM bridge plugin instances.
 // Each call to factory->create_plugin() allocates a new per-instance

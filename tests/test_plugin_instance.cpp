@@ -40,17 +40,17 @@ clap_process_t make_process(uint32_t frames = 64) {
 } // namespace
 
 TEST_CASE("plugin_instance: load stub plugin", "[plugin_instance]") {
-    auto result = kairos::plugin_instance::load(KAIROS_STUB_PLUGIN_PATH, "org.cljseq.test/stub",
-                                                kairos::kairos_host());
+    auto result = kairos::plugin_instance::load(
+        KAIROS_STUB_PLUGIN_PATH, "org.nomos-studio.test/stub", kairos::kairos_host());
 
     REQUIRE(result);
     REQUIRE(result->current_state() == kairos::plugin_instance::state::initialized);
     REQUIRE(result->descriptor() != nullptr);
-    REQUIRE(std::string(result->descriptor()->id) == "org.cljseq.test/stub");
+    REQUIRE(std::string(result->descriptor()->id) == "org.nomos-studio.test/stub");
 }
 
 TEST_CASE("plugin_instance: activate / deactivate", "[plugin_instance]") {
-    auto inst = kairos::plugin_instance::load(KAIROS_STUB_PLUGIN_PATH, "org.cljseq.test/stub",
+    auto inst = kairos::plugin_instance::load(KAIROS_STUB_PLUGIN_PATH, "org.nomos-studio.test/stub",
                                               kairos::kairos_host());
     REQUIRE(inst);
 
@@ -63,7 +63,7 @@ TEST_CASE("plugin_instance: activate / deactivate", "[plugin_instance]") {
 }
 
 TEST_CASE("plugin_instance: full lifecycle with process()", "[plugin_instance]") {
-    auto inst = kairos::plugin_instance::load(KAIROS_STUB_PLUGIN_PATH, "org.cljseq.test/stub",
+    auto inst = kairos::plugin_instance::load(KAIROS_STUB_PLUGIN_PATH, "org.nomos-studio.test/stub",
                                               kairos::kairos_host());
     REQUIRE(inst);
 
@@ -83,7 +83,7 @@ TEST_CASE("plugin_instance: full lifecycle with process()", "[plugin_instance]")
 }
 
 TEST_CASE("plugin_instance: wrong state returns error", "[plugin_instance]") {
-    auto inst = kairos::plugin_instance::load(KAIROS_STUB_PLUGIN_PATH, "org.cljseq.test/stub",
+    auto inst = kairos::plugin_instance::load(KAIROS_STUB_PLUGIN_PATH, "org.nomos-studio.test/stub",
                                               kairos::kairos_host());
     REQUIRE(inst);
 
@@ -94,8 +94,8 @@ TEST_CASE("plugin_instance: wrong state returns error", "[plugin_instance]") {
 }
 
 TEST_CASE("plugin_instance: bad path returns load_failed", "[plugin_instance]") {
-    auto result = kairos::plugin_instance::load("/nonexistent/plugin.so", "org.cljseq.test/stub",
-                                                kairos::kairos_host());
+    auto result = kairos::plugin_instance::load(
+        "/nonexistent/plugin.so", "org.nomos-studio.test/stub", kairos::kairos_host());
 
     REQUIRE(!result);
     REQUIRE(result.error() == kairos::plugin_error::load_failed);

@@ -21,9 +21,9 @@ TEST_CASE("session: register_source is idempotent", "[session]") {
     REQUIRE(sess.has_value());
 
     nomos::rt::source_info src{
-        .id          = edn::keyword{"org.cljseq/loop"},
+        .id          = edn::keyword{"org.nomos-studio/loop"},
         .name        = "loop",
-        .description = "cljseq loop sequencer",
+        .description = "nous loop sequencer",
     };
 
     REQUIRE_NOTHROW(sess->register_source(src));
@@ -35,14 +35,14 @@ TEST_CASE("session: emit writes an entry", "[session]") {
     REQUIRE(sess.has_value());
 
     sess->register_source({
-        .id   = edn::keyword{"org.cljseq/loop"},
+        .id   = edn::keyword{"org.nomos-studio/loop"},
         .name = "loop",
     });
 
     txlog::entry e{};
     e.beat    = 1.0;
     e.wall_ns = 0;
-    e.source  = edn::keyword{"org.cljseq/loop"};
+    e.source  = edn::keyword{"org.nomos-studio/loop"};
     e.path    = edn::vector{{edn::keyword{"test/param"}}};
     e.after   = edn::value{42.0};
 

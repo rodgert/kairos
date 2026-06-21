@@ -16,11 +16,11 @@ namespace kairos {
 namespace {
 
     // ---------------------------------------------------------------------------
-    // org.cljseq.kairos.midi-passthrough
+    // org.nomos-studio.kairos.midi-passthrough
     //
     // Stateless plugin.  Forwards all NOTE_ON, NOTE_OFF, and raw MIDI events from
     // in_events to out_events unchanged.  Useful as a terminal node for graphs
-    // where cljseq drives hardware synths directly via IPC note events.
+    // where nous drives hardware synths directly via IPC note events.
     // ---------------------------------------------------------------------------
 
     static constexpr const char* k_features[] = {CLAP_PLUGIN_FEATURE_INSTRUMENT, nullptr};
@@ -29,8 +29,8 @@ namespace {
         .clap_version = CLAP_VERSION_INIT,
         .id           = k_passthrough_plugin_id,
         .name         = "MIDI Passthrough",
-        .vendor       = "cljseq/kairos",
-        .url          = "https://github.com/cljseq/kairos",
+        .vendor       = "nomos-studio/kairos",
+        .url          = "https://github.com/nomos-studio/kairos",
         .manual_url   = "",
         .support_url  = "",
         .version      = "0.1.0",
@@ -95,7 +95,7 @@ namespace {
     };
 
     // ---------------------------------------------------------------------------
-    // org.cljseq.kairos.audio-passthrough
+    // org.nomos-studio.kairos.audio-passthrough
     //
     // Stateless plugin.  Declares one stereo input port and one stereo output
     // port.  In process(), copies each input channel to the corresponding output
@@ -109,8 +109,8 @@ namespace {
         .clap_version = CLAP_VERSION_INIT,
         .id           = k_audio_passthrough_plugin_id,
         .name         = "Audio Passthrough",
-        .vendor       = "cljseq/kairos",
-        .url          = "https://github.com/cljseq/kairos",
+        .vendor       = "nomos-studio/kairos",
+        .url          = "https://github.com/nomos-studio/kairos",
         .manual_url   = "",
         .support_url  = "",
         .version      = "0.1.0",

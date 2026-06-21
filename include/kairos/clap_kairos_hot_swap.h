@@ -7,7 +7,8 @@
 // process() block boundary, preserving audio continuity.
 //
 // ABI contract (must match kairos/src/wasm_bridge_plugin.hpp):
-//   Extension ID : "org.cljseq.kairos.ext.hot-swap/1"
+//   Extension ID : CLAP_EXT_KAIROS_HOT_SWAP  ("org.nomos-studio.kairos.ext.hot-swap/2")
+//   Extension ID v1 "org.cljseq.kairos.ext.hot-swap/1" was used before the rename.
 //   Struct layout: one function pointer (request).
 //
 // Protocol:
