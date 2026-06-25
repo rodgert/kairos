@@ -37,10 +37,12 @@ void              on_signal(int) {
 } // namespace
 
 int main(int argc, char* argv[]) {
-    std::string  socket_path     = "/tmp/kairos.sock";
-    std::string  db_path         = "kairos.db";
-    int          midi_port       = -1;
-    int          midi_in_port    = -1;
+    std::string  socket_path = "/tmp/kairos.sock";
+    std::string  db_path     = "kairos.db";
+    int          midi_port   = -1;
+    std::string  midi_port_name;
+    int          midi_in_port = -1;
+    std::string  midi_in_port_name;
     uint16_t     osc_port        = 9001;
     double       initial_bpm     = 120.0;
     double       sample_rate     = 48000.0;
@@ -63,11 +65,23 @@ int main(int argc, char* argv[]) {
             socket_path = argv[++i];
         else if (arg == "--db" && i + 1 < argc)
             db_path = argv[++i];
-        else if (arg == "--midi-port" && i + 1 < argc)
-            midi_port = std::atoi(argv[++i]);
-        else if (arg == "--midi-in-port" && i + 1 < argc)
-            midi_in_port = std::atoi(argv[++i]);
-        else if (arg == "--osc-port" && i + 1 < argc)
+        else if (arg == "--midi-port" && i + 1 < argc) {
+            const std::string s{argv[++i]};
+            char*             end;
+            long              idx = std::strtol(s.c_str(), &end, 10);
+            if (end != s.c_str() && *end == '\0')
+                midi_port = static_cast<int>(idx);
+            else
+                midi_port_name = s;
+        } else if (arg == "--midi-in-port" && i + 1 < argc) {
+            const std::string s{argv[++i]};
+            char*             end;
+            long              idx = std::strtol(s.c_str(), &end, 10);
+            if (end != s.c_str() && *end == '\0')
+                midi_in_port = static_cast<int>(idx);
+            else
+                midi_in_port_name = s;
+        } else if (arg == "--osc-port" && i + 1 < argc)
             osc_port = static_cast<uint16_t>(std::atoi(argv[++i]));
         else if (arg == "--bpm" && i + 1 < argc)
             initial_bpm = std::atof(argv[++i]);
@@ -133,8 +147,9 @@ int main(int argc, char* argv[]) {
     kairos::plugin_registry plugins;
 
     // Always available — no path needed.
-    plugins[kairos::k_passthrough_plugin_id]       = kairos::plugin_info{.path = "kairos:passthrough"};
-    plugins[kairos::k_audio_passthrough_plugin_id] = kairos::plugin_info{.path = "kairos:audio-passthrough"};
+    plugins[kairos::k_passthrough_plugin_id] = kairos::plugin_info{.path = "kairos:passthrough"};
+    plugins[kairos::k_audio_passthrough_plugin_id] =
+        kairos::plugin_info{.path = "kairos:audio-passthrough"};
 
     // Discover installed .clap files from platform default paths.
     if (!no_discover) {
@@ -185,8 +200,12 @@ int main(int argc, char* argv[]) {
     nomos::rt::midi_io::list_ports();
     if (midi_port >= 0)
         midi.open_port(static_cast<unsigned int>(midi_port));
+    else if (!midi_port_name.empty())
+        midi.open_port_by_name(midi_port_name);
     if (midi_in_port >= 0)
         midi.open_input_port(static_cast<unsigned int>(midi_in_port), hw_midi_in_queue);
+    else if (!midi_in_port_name.empty())
+        midi.open_input_port_by_name(midi_in_port_name, hw_midi_in_queue);
 
     // OSC server
     nomos::rt::osc_server osc{osc_port, osc_in_queue};
