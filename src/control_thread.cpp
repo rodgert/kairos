@@ -7,6 +7,7 @@
 
 #include <edn/parser.hpp>
 
+#include <cstdio>
 #include <string>
 
 namespace kairos {
@@ -118,11 +119,23 @@ void control_thread::dispatch_extension(int conn_fd, const nomos::rt::ipc::messa
             break;
         {
             auto mgr = std::make_unique<plugin_graph_manager>();
-            if (mgr->load(g, kairos_cfg_.plugins, kairos_cfg_.host)) {
+            auto r   = mgr->load(g, kairos_cfg_.plugins, kairos_cfg_.host);
+            if (r) {
                 mgr->set_audio_config(kairos_cfg_.sample_rate, kairos_cfg_.min_frames,
                                       kairos_cfg_.max_frames);
                 mgr->start_processing_all();
+                const std::size_t n = mgr->node_count();
                 graph_.store(std::move(mgr));
+                // Ack so the Clojure side gets a visible confirmation.
+                char ack[32];
+                std::snprintf(ack, sizeof(ack), "{:nodes %zu}", n);
+                push_frame(nomos::rt::ipc::msg_graph_load_ack, ack);
+            } else {
+                // Log the attempted plugin IDs so the error is diagnosable.
+                std::fprintf(stderr, "[graph-load] FAILED — unknown plugin(s):");
+                for (const auto& nd : g.nodes)
+                    std::fprintf(stderr, " \"%s\"", nd.plugin.c_str());
+                std::fprintf(stderr, "\n");
             }
         }
         break;

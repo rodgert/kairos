@@ -69,6 +69,8 @@ void process_thread::run() {
         in_buf_.drain(hw_midi_in_queue_);
         in_buf_.drain(osc_in_queue_);
 
+        const std::size_t in_count = in_buf_.input_events()->size(in_buf_.input_events());
+
         clap_process_t proc{};
         proc.steady_time         = t0.count() * 1000; // µs → ns
         proc.frames_count        = cfg_.block_size;
@@ -82,8 +84,19 @@ void process_thread::run() {
 
         {
             auto g = graph_.read();
-            if (g)
+            if (g && g->node_count() > 0) {
                 g->process_all(proc);
+            } else if (in_count > 0) {
+                // No plugin graph loaded: pass note/MIDI events directly to output.
+                const clap_input_events_t*  in_ev = in_buf_.input_events();
+                const clap_output_events_t* out   = collector_.output_events();
+                const uint32_t              n     = in_ev->size(in_ev);
+                for (uint32_t i = 0; i < n; ++i) {
+                    const clap_event_header_t* hdr = in_ev->get(in_ev, i);
+                    if (hdr)
+                        out->try_push(out, hdr);
+                }
+            }
         }
 
         if (collector_.count() > 0) {

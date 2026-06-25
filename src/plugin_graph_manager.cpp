@@ -2,6 +2,7 @@
 #include <kairos/plugin_graph_manager.hpp>
 
 #include <algorithm>
+#include <cstdio>
 #include <cstring>
 #include <queue>
 #include <unordered_map>
