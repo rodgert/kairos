@@ -41,6 +41,7 @@ int main(int argc, char* argv[]) {
     std::string  db_path     = "kairos.db";
     int          midi_port   = -1;
     std::string  midi_port_name;
+    std::string  midi_virtual_port_name;
     int          midi_in_port = -1;
     std::string  midi_in_port_name;
     uint16_t     osc_port        = 9001;
@@ -73,7 +74,9 @@ int main(int argc, char* argv[]) {
                 midi_port = static_cast<int>(idx);
             else
                 midi_port_name = s;
-        } else if (arg == "--midi-in-port" && i + 1 < argc) {
+        } else if (arg == "--virtual-midi-port" && i + 1 < argc)
+            midi_virtual_port_name = argv[++i];
+        else if (arg == "--midi-in-port" && i + 1 < argc) {
             const std::string s{argv[++i]};
             char*             end;
             long              idx = std::strtol(s.c_str(), &end, 10);
@@ -118,8 +121,10 @@ int main(int argc, char* argv[]) {
                    "  --db <path>             txlog database (default: kairos.db)\n"
                    "  --bpm <bpm>             Initial Link tempo (default: 120)\n"
                    "  --block-size <n>        CLAP block size in frames (default: 256)\n"
-                   "  --midi-port <n>         MIDI output port index\n"
-                   "  --midi-in-port <n>      MIDI input port index\n"
+                   "  --midi-port <n|name>    MIDI output port index or name substring\n"
+                   "  --virtual-midi-port <name>  Create a virtual MIDI output port "
+                   "(loopback/test)\n"
+                   "  --midi-in-port <n|name> MIDI input port index or name substring\n"
                    "  --osc-port <n>          UDP OSC listen port (default: 9001)\n"
                    "  --plugin <id=path>      Register a plugin explicitly\n"
                    "  --plugin-path <dir>     Extra directory to scan for .clap files\n"
@@ -202,6 +207,8 @@ int main(int argc, char* argv[]) {
         midi.open_port(static_cast<unsigned int>(midi_port));
     else if (!midi_port_name.empty())
         midi.open_port_by_name(midi_port_name);
+    else if (!midi_virtual_port_name.empty())
+        midi.open_virtual_port(midi_virtual_port_name);
     if (midi_in_port >= 0)
         midi.open_input_port(static_cast<unsigned int>(midi_in_port), hw_midi_in_queue);
     else if (!midi_in_port_name.empty())
