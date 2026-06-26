@@ -115,9 +115,20 @@ void audio_engine::on_audio_block(float** out_channels, const float* const* in_c
             g->process_all(proc);
             if (out_ch > 0)
                 g->collect_hw_output(out_channels, out_ch, nframes);
-        } else if (out_ch > 0) {
-            for (uint32_t c = 0; c < out_ch; ++c)
-                std::memset(out_channels[c], 0, nframes * sizeof(float));
+        } else {
+            if (out_ch > 0)
+                for (uint32_t c = 0; c < out_ch; ++c)
+                    std::memset(out_channels[c], 0, nframes * sizeof(float));
+            // No graph loaded: pass note/MIDI events directly to output so
+            // IPC notes reach hardware without requiring an explicit graph load.
+            const clap_input_events_t*  in_ev = in_buf_.input_events();
+            const clap_output_events_t* out   = collector_.output_events();
+            const uint32_t              n     = in_ev->size(in_ev);
+            for (uint32_t i = 0; i < n; ++i) {
+                const clap_event_header_t* hdr = in_ev->get(in_ev, i);
+                if (hdr)
+                    out->try_push(out, hdr);
+            }
         }
     }
 
