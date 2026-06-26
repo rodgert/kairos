@@ -4,6 +4,7 @@
 #include <kairos/plugin_host.hpp>
 #include <nomos/rt/event_scheduler.hpp>
 #include <nomos/rt/input_event.hpp>
+#include <nomos/rt/ipc.hpp>
 #include <nomos/rt/spsc_queue.hpp>
 
 #include "audio_device.hpp"
@@ -209,6 +210,25 @@ int main(int argc, char* argv[]) {
         midi.open_port_by_name(midi_port_name);
     else if (!midi_virtual_port_name.empty())
         midi.open_virtual_port(midi_virtual_port_name);
+
+    // Echo received MIDI input to the connected IPC client as msg_midi_event
+    // (0x51).  This mirrors aion's behaviour and enables self-loopback tests:
+    // start with --virtual-midi-port N --midi-in-port N and use
+    // kairos/await-midi-message to capture events from the Clojure side.
+    midi.set_echo_callback([&ctrl](const std::vector<uint8_t>& bytes) {
+        if (bytes.empty())
+            return;
+        const uint8_t status = bytes[0];
+        const uint8_t ch     = status & 0x0Fu;
+        const uint8_t b1     = bytes.size() > 1 ? bytes[1] : 0u;
+        const uint8_t b2     = bytes.size() > 2 ? bytes[2] : 0u;
+        std::string edn = "{:port 0 :channel " + std::to_string(static_cast<int>(ch)) + " :data [" +
+                          std::to_string(static_cast<int>(status)) + " " +
+                          std::to_string(static_cast<int>(b1)) + " " +
+                          std::to_string(static_cast<int>(b2)) + "]}";
+        ctrl.push_frame(nomos::rt::ipc::msg_midi_event, edn);
+    });
+
     if (midi_in_port >= 0)
         midi.open_input_port(static_cast<unsigned int>(midi_in_port), hw_midi_in_queue);
     else if (!midi_in_port_name.empty())
