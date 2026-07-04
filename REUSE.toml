@@ -1,0 +1,21 @@
+version = 1
+SPDX-PackageName = "kairos"
+SPDX-PackageSupplier = "rodgert@twrodgers.com"
+SPDX-PackageDownloadLocation = "https://github.com/nomos-studio/kairos"
+
+# Authored source — SPDX-License-Identifier already inline; aggregate adds copyright.
+# Files carry a mix of GPL-2.0-or-later, GPL-3.0-or-later, and LGPL-2.1-or-later
+# per module. The REUSE.toml license field is a fallback for any file without inline.
+[[annotations]]
+path = ["src/**", "include/**", "tests/**", "cmake/**"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2025-2026 nomos-studio contributors"
+SPDX-License-Identifier = "LGPL-2.1-or-later"
+
+# Build system, scripts, and project metadata
+[[annotations]]
+path = ["CMakeLists.txt", "scripts/**", ".github/**", ".clang-format", ".clangd",
+        "README.md", "CHANGELOG.md", "CMakePresets.json", "LICENSE", ".gitignore"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2025-2026 nomos-studio contributors"
+SPDX-License-Identifier = "LGPL-2.1-or-later"
