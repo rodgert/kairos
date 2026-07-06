@@ -4,3 +4,4 @@ compile_commands.json
 .cache/
 .claude/settings.local.json
 build2/
+build-san/
