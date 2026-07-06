@@ -63,6 +63,7 @@ target_link_libraries(kairos-tests
     PRIVATE
         kairos::core
         Catch2::Catch2WithMain
+        sanitizers::sanitizers
 )
 
 if(KAIROS_WASM_BRIDGE)

@@ -20,6 +20,7 @@ project(kairos
 
 include(FetchContent)
 include(GNUInstallDirs)
+include(cmake/Sanitizers.cmake)
 
 set(FETCHCONTENT_UPDATES_DISCONNECTED ON CACHE BOOL
     "Skip network fetch if already populated")
@@ -167,6 +168,8 @@ target_link_libraries(kairos-core
         ${CMAKE_DL_LIBS}
 )
 
+nomos_sanitize_target(kairos-core)
+
 set_target_properties(kairos-core PROPERTIES
     CXX_STANDARD          20
     CXX_STANDARD_REQUIRED ON
@@ -203,6 +206,7 @@ if(KAIROS_BUILD_EXECUTABLE AND KAIROS_BUILD_CORE)
     target_link_libraries(kairos PRIVATE
         kairos::core
         nomos::rt-exe-headers
+        sanitizers::sanitizers
     )
 
     set_target_properties(kairos PROPERTIES
