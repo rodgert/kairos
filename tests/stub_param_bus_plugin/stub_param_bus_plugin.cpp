@@ -3,8 +3,8 @@
 // Minimal CLAP plugin that implements the kairos/param-bus extension.
 // Used by test_param_bus_host.cpp to test the host-side param-bus consumer.
 
-#include <kairos/clap_kairos_param_bus.h>
 #include <clap/clap.h>
+#include <kairos/clap_kairos_param_bus.h>
 
 #include <cstring>
 
@@ -22,8 +22,8 @@ static clap_kairos_param_entry_t s_entries[2] = {
 static clap_kairos_param_schema_t s_schema{};
 
 // Last frame written by set_param_frame() — readable from tests.
-float g_stub_param_frame[2] = {0.f, 0.f};
-uint32_t g_stub_param_count  = 0;
+float    g_stub_param_frame[2] = {0.f, 0.f};
+uint32_t g_stub_param_count    = 0;
 
 static void rebuild_schema() {
     ++s_epoch;
@@ -41,7 +41,8 @@ static const clap_kairos_param_schema_t* param_get_schema(const clap_plugin_t*) 
 }
 
 static bool param_set_param_frame(const clap_plugin_t*, const float* values, uint32_t count) {
-    if (count == 0) return false;
+    if (count == 0)
+        return false;
     const uint32_t n = count < 2 ? count : 2;
     for (uint32_t i = 0; i < n; ++i)
         g_stub_param_frame[i] = values[i];
@@ -130,7 +131,7 @@ static const clap_plugin_descriptor_t* factory_descriptor(const clap_plugin_fact
 }
 static const clap_plugin_t* factory_create(const clap_plugin_factory_t*, const clap_host_t*,
                                            const char*) {
-    s_epoch            = 0;
+    s_epoch               = 0;
     g_stub_param_frame[0] = 0.f;
     g_stub_param_frame[1] = 0.f;
     g_stub_param_count    = 0;

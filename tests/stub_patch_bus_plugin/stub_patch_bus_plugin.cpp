@@ -3,8 +3,8 @@
 // Minimal CLAP plugin that implements the kairos/patch-bus extension.
 // Used by test_patch_bus_host.cpp to test the host-side patch-bus consumer.
 
-#include <kairos/clap_kairos_patch_bus.h>
 #include <clap/clap.h>
+#include <kairos/clap_kairos_patch_bus.h>
 
 #include <cstring>
 #include <string>
@@ -20,7 +20,8 @@ static std::string s_current_edn;
 // ---------------------------------------------------------------------------
 
 static bool patch_push_patch(const clap_plugin_t*, const char* edn, uint32_t len) {
-    if (!edn || len == 0) return false;
+    if (!edn || len == 0)
+        return false;
     s_current_edn.assign(edn, len);
     return true;
 }
@@ -38,13 +39,23 @@ static const clap_plugin_patch_bus_t s_patch_bus_ext{
 // Plugin lifecycle
 // ---------------------------------------------------------------------------
 
-static bool plugin_init(const clap_plugin_t*)    { return true; }
-static void plugin_destroy(const clap_plugin_t*) {}
-static bool plugin_activate(const clap_plugin_t*, double, uint32_t, uint32_t) { return true; }
-static void plugin_deactivate(const clap_plugin_t*)  {}
-static bool plugin_start_processing(const clap_plugin_t*) { return true; }
-static void plugin_stop_processing(const clap_plugin_t*)  {}
-static void plugin_reset(const clap_plugin_t*)            {}
+static bool plugin_init(const clap_plugin_t*) {
+    return true;
+}
+static void plugin_destroy(const clap_plugin_t*) {
+}
+static bool plugin_activate(const clap_plugin_t*, double, uint32_t, uint32_t) {
+    return true;
+}
+static void plugin_deactivate(const clap_plugin_t*) {
+}
+static bool plugin_start_processing(const clap_plugin_t*) {
+    return true;
+}
+static void plugin_stop_processing(const clap_plugin_t*) {
+}
+static void plugin_reset(const clap_plugin_t*) {
+}
 static clap_process_status plugin_process(const clap_plugin_t*, const clap_process_t*) {
     return CLAP_PROCESS_SLEEP;
 }
@@ -53,7 +64,8 @@ static const void* plugin_get_extension(const clap_plugin_t*, const char* id) {
         return &s_patch_bus_ext;
     return nullptr;
 }
-static void plugin_on_main_thread(const clap_plugin_t*) {}
+static void plugin_on_main_thread(const clap_plugin_t*) {
+}
 
 static const char* const s_features[] = {CLAP_PLUGIN_FEATURE_INSTRUMENT, nullptr};
 
@@ -89,7 +101,9 @@ static const clap_plugin_t s_plugin{
 // Factory
 // ---------------------------------------------------------------------------
 
-static uint32_t factory_count(const clap_plugin_factory_t*) { return 1; }
+static uint32_t factory_count(const clap_plugin_factory_t*) {
+    return 1;
+}
 static const clap_plugin_descriptor_t* factory_descriptor(const clap_plugin_factory_t*, uint32_t) {
     return &s_desc;
 }
@@ -109,10 +123,14 @@ static const clap_plugin_factory_t s_factory{
 // Entry point
 // ---------------------------------------------------------------------------
 
-static bool  entry_init(const char*)       { return true; }
-static void  entry_deinit()                {}
+static bool entry_init(const char*) {
+    return true;
+}
+static void entry_deinit() {
+}
 static const void* entry_get_factory(const char* id) {
-    if (std::strcmp(id, CLAP_PLUGIN_FACTORY_ID) == 0) return &s_factory;
+    if (std::strcmp(id, CLAP_PLUGIN_FACTORY_ID) == 0)
+        return &s_factory;
     return nullptr;
 }
 

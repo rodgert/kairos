@@ -3,8 +3,8 @@
 // Minimal CLAP plugin that implements the kairos/tap-bus extension.
 // Used by test_tap_bus_host.cpp to test the host-side tap-bus consumer.
 
-#include <kairos/clap_kairos_tap_bus.h>
 #include <clap/clap.h>
+#include <kairos/clap_kairos_tap_bus.h>
 
 #include <cstring>
 
@@ -22,9 +22,9 @@ static clap_kairos_tap_entry_t s_entries[2] = {
 static clap_kairos_tap_schema_t s_schema{};
 
 // Values written each process() — constant for predictable test assertions.
-static constexpr float k_alpha = 0.25f;
-static constexpr float k_beta  = 0.75f;
-static float s_tap_frame[2] = {k_alpha, k_beta};
+static constexpr float k_alpha        = 0.25f;
+static constexpr float k_beta         = 0.75f;
+static float           s_tap_frame[2] = {k_alpha, k_beta};
 
 static void rebuild_schema() {
     ++s_epoch;

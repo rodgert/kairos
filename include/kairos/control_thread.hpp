@@ -10,7 +10,9 @@
 #include <optional>
 #include <string>
 
-namespace nomos::rt { class link_peer; }
+namespace nomos::rt {
+class link_peer;
+}
 
 namespace kairos {
 
