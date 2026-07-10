@@ -2,9 +2,11 @@
 
 #include <kairos/control_thread.hpp>
 #include <kairos/plugin_host.hpp>
+#include <nomos/rt/common_args.hpp>
 #include <nomos/rt/event_scheduler.hpp>
 #include <nomos/rt/input_event.hpp>
 #include <nomos/rt/ipc.hpp>
+#include <nomos/rt/signal_handlers.hpp>
 #include <nomos/rt/spsc_queue.hpp>
 
 #include "audio_device.hpp"
@@ -16,11 +18,8 @@
 #include "plugin_discovery.hpp"
 #include "process_thread.hpp"
 
-#include <nomos/rt/signal_handlers.hpp>
-
 #include <atomic>
 #include <chrono>
-#include <cstdlib>
 #include <iostream>
 #include <memory>
 #include <string_view>
@@ -39,110 +38,57 @@ void              on_signal(int) noexcept {
 } // namespace
 
 int main(int argc, char* argv[]) {
-    std::string  socket_path = "/tmp/kairos.sock";
-    std::string  db_path     = "kairos.db";
-    int          midi_port   = -1;
-    std::string  midi_port_name;
-    std::string  midi_virtual_port_name;
-    int          midi_in_port = -1;
-    std::string  midi_in_port_name;
-    uint16_t     osc_port        = 9001;
-    double       initial_bpm     = 120.0;
-    double       sample_rate     = 48000.0;
-    uint32_t     block_size      = 256;
-    bool         no_discover     = false;
-    bool         no_audio        = false;
-    bool         list_audio_devs = false;
-    unsigned int audio_device_id = 0; // 0 = default
-    uint32_t     audio_out_ch    = 2;
-    uint32_t     audio_in_ch     = 0;
+    constexpr double sample_rate = 48000.0;
 
-    // Extra plugin search paths beyond the platform defaults.
+    nomos::rt::common_args args;
+    args.socket_path = "/tmp/kairos.sock";
+    args.db_path     = "kairos.db";
+    args.osc_port    = 9001;
+    args.block_size  = 256;
+
+    // kairos-specific args parsed from remainder.
+    std::string              midi_virtual_port_name;
+    bool                     no_discover = false;
     std::vector<std::string> extra_search_paths;
-    // Explicit plugin registrations: id=path pairs from --plugin flags.
-    kairos::plugin_registry explicit_plugins;
+    kairos::plugin_registry  explicit_plugins;
 
-    for (int i = 1; i < argc; ++i) {
-        const std::string_view arg{argv[i]};
-        if (arg == "--socket" && i + 1 < argc)
-            socket_path = argv[++i];
-        else if (arg == "--db" && i + 1 < argc)
-            db_path = argv[++i];
-        else if (arg == "--midi-port" && i + 1 < argc) {
-            const std::string s{argv[++i]};
-            char*             end;
-            long              idx = std::strtol(s.c_str(), &end, 10);
-            if (end != s.c_str() && *end == '\0')
-                midi_port = static_cast<int>(idx);
-            else
-                midi_port_name = s;
-        } else if (arg == "--virtual-midi-port" && i + 1 < argc)
-            midi_virtual_port_name = argv[++i];
-        else if (arg == "--midi-in-port" && i + 1 < argc) {
-            const std::string s{argv[++i]};
-            char*             end;
-            long              idx = std::strtol(s.c_str(), &end, 10);
-            if (end != s.c_str() && *end == '\0')
-                midi_in_port = static_cast<int>(idx);
-            else
-                midi_in_port_name = s;
-        } else if (arg == "--osc-port" && i + 1 < argc)
-            osc_port = static_cast<uint16_t>(std::atoi(argv[++i]));
-        else if (arg == "--bpm" && i + 1 < argc)
-            initial_bpm = std::atof(argv[++i]);
-        else if (arg == "--block-size" && i + 1 < argc)
-            block_size = static_cast<uint32_t>(std::atoi(argv[++i]));
-        else if (arg == "--plugin-path" && i + 1 < argc)
-            extra_search_paths.emplace_back(argv[++i]);
-        else if (arg == "--no-discover")
+    const auto rem = nomos::rt::parse_common_args(argc, argv, args);
+
+    for (std::size_t i = 0; i < rem.size(); ++i) {
+        const std::string_view a        = rem[i];
+        const bool             has_next = (i + 1 < rem.size());
+
+        if (a == "--virtual-midi-port" && has_next)
+            midi_virtual_port_name = rem[++i];
+        else if (a == "--plugin-path" && has_next)
+            extra_search_paths.emplace_back(rem[++i]);
+        else if (a == "--no-discover")
             no_discover = true;
-        else if (arg == "--no-audio")
-            no_audio = true;
-        else if (arg == "--list-audio-devices")
-            list_audio_devs = true;
-        else if (arg == "--audio-device" && i + 1 < argc)
-            audio_device_id = static_cast<unsigned int>(std::atoi(argv[++i]));
-        else if (arg == "--audio-out-ch" && i + 1 < argc)
-            audio_out_ch = static_cast<uint32_t>(std::atoi(argv[++i]));
-        else if (arg == "--audio-in-ch" && i + 1 < argc)
-            audio_in_ch = static_cast<uint32_t>(std::atoi(argv[++i]));
-        else if (arg == "--plugin" && i + 1 < argc) {
-            // --plugin "org.example.Synth=/path/to/synth.clap"
-            std::string pair{argv[++i]};
+        else if (a == "--plugin" && has_next) {
+            std::string pair{rem[++i]};
             const auto  sep = pair.find('=');
             if (sep != std::string::npos)
                 explicit_plugins.emplace(pair.substr(0, sep),
                                          kairos::plugin_info{.path = pair.substr(sep + 1)});
-        } else if (arg == "--version") {
-            std::cout << "kairos v" << kairos::version() << "\n";
+        } else if (a == "--help") {
+            std::cout << "Usage: kairos [options]\n";
+            nomos::rt::print_common_args_help(args, std::cout);
+            std::cout << "  --virtual-midi-port <name>  Create a virtual MIDI output port\n"
+                      << "  --plugin-path <dir>         Extra directory to scan for .clap files\n"
+                      << "  --no-discover               Skip platform default CLAP scan paths\n"
+                      << "  --plugin <id=path>          Register a plugin explicitly\n";
             return EXIT_SUCCESS;
-        } else if (arg == "--help") {
-            std::cout
-                << "Usage: kairos [options]\n"
-                   "  --socket <path>         Unix domain socket (default: /tmp/kairos.sock)\n"
-                   "  --db <path>             txlog database (default: kairos.db)\n"
-                   "  --bpm <bpm>             Initial Link tempo (default: 120)\n"
-                   "  --block-size <n>        CLAP block size in frames (default: 256)\n"
-                   "  --midi-port <n|name>    MIDI output port index or name substring\n"
-                   "  --virtual-midi-port <name>  Create a virtual MIDI output port "
-                   "(loopback/test)\n"
-                   "  --midi-in-port <n|name> MIDI input port index or name substring\n"
-                   "  --osc-port <n>          UDP OSC listen port (default: 9001)\n"
-                   "  --plugin <id=path>      Register a plugin explicitly\n"
-                   "  --plugin-path <dir>     Extra directory to scan for .clap files\n"
-                   "  --no-discover           Skip platform default CLAP scan paths\n"
-                   "  --audio-device <id>     RtAudio device id (0=default, see "
-                   "--list-audio-devices)\n"
-                   "  --audio-out-ch <n>      Audio output channels (default: 2)\n"
-                   "  --audio-in-ch <n>       Audio input channels (default: 0)\n"
-                   "  --no-audio              Headless timer loop (skip audio device)\n"
-                   "  --list-audio-devices    Print available audio devices and exit\n"
-                   "  --version               Print version and exit\n";
-            return EXIT_SUCCESS;
+        } else {
+            std::cerr << "[kairos] unknown argument: " << a << "\n";
         }
     }
 
-    if (list_audio_devs) {
+    if (args.version) {
+        std::cout << "kairos v" << kairos::version() << "\n";
+        return EXIT_SUCCESS;
+    }
+
+    if (args.list_audio_devs) {
         nomos::rt::audio_device::list_devices();
         return EXIT_SUCCESS;
     }
@@ -151,20 +97,15 @@ int main(int argc, char* argv[]) {
 
     // Build plugin registry: builtins + discovered + explicit overrides.
     kairos::plugin_registry plugins;
-
-    // Always available — no path needed.
     plugins[kairos::k_passthrough_plugin_id] = kairos::plugin_info{.path = "kairos:passthrough"};
     plugins[kairos::k_audio_passthrough_plugin_id] =
         kairos::plugin_info{.path = "kairos:audio-passthrough"};
 
-    // Discover installed .clap files from platform default paths.
     if (!no_discover) {
         auto discovered = kairos::discover_plugins(extra_search_paths);
         for (auto& [id, info] : discovered)
-            plugins.emplace(id, std::move(info)); // don't overwrite builtins
+            plugins.emplace(id, std::move(info));
     }
-
-    // Explicit --plugin flags win over discovery.
     for (auto& [id, info] : explicit_plugins)
         plugins.insert_or_assign(id, std::move(info));
 
@@ -172,49 +113,41 @@ int main(int argc, char* argv[]) {
     for (const auto& [id, info] : plugins)
         std::cerr << "  " << id << " → " << info.path << "\n";
 
-    // Shared queues
+    // Shared queues.
     nomos::rt::param_queue       param_queue;
     nomos::rt::midi_event_queue  midi_out_queue;
     nomos::rt::input_event_queue ipc_in_queue;
     nomos::rt::input_event_queue hw_midi_in_queue;
     nomos::rt::input_event_queue osc_in_queue;
 
-    // Beat scheduler — shared between control thread (push) and process loop (tick).
     nomos::rt::event_scheduler scheduler;
 
-    // Link peer — constructed before the control thread so we can pass a pointer.
-    nomos::rt::link_peer link{initial_bpm};
+    nomos::rt::link_peer link{args.bpm};
     link.enable(true);
 
-    // Control thread — IPC + session + graph management
     kairos::control_thread::config ctrl_cfg{
-        .socket_path   = socket_path,
-        .db_path       = db_path,
+        .socket_path   = args.socket_path,
+        .db_path       = args.db_path,
         .sched_staging = &scheduler.staging(),
         .link_peer     = &link,
         .plugins       = std::move(plugins),
         .host          = kairos::kairos_host(),
         .sample_rate   = sample_rate,
-        .min_frames    = block_size,
-        .max_frames    = block_size,
+        .min_frames    = args.block_size,
+        .max_frames    = args.block_size,
     };
     kairos::control_thread ctrl{ctrl_cfg, param_queue, ipc_in_queue};
     ctrl.start();
 
-    // MIDI I/O
     nomos::rt::midi_io midi;
     nomos::rt::midi_io::list_ports();
-    if (midi_port >= 0)
-        midi.open_port(static_cast<unsigned int>(midi_port));
-    else if (!midi_port_name.empty())
-        midi.open_port_by_name(midi_port_name);
+    if (args.midi_port >= 0)
+        midi.open_port(static_cast<unsigned int>(args.midi_port));
+    else if (!args.midi_port_name.empty())
+        midi.open_port_by_name(args.midi_port_name);
     else if (!midi_virtual_port_name.empty())
         midi.open_virtual_port(midi_virtual_port_name);
 
-    // Echo received MIDI input to the connected IPC client as msg_midi_event
-    // (0x51).  This mirrors aion's behaviour and enables self-loopback tests:
-    // start with --virtual-midi-port N --midi-in-port N and use
-    // kairos/await-midi-message to capture events from the Clojure side.
     midi.set_echo_callback([&ctrl](const std::vector<uint8_t>& bytes) {
         if (bytes.empty())
             return;
@@ -229,28 +162,24 @@ int main(int argc, char* argv[]) {
         ctrl.push_frame(nomos::rt::ipc::msg_midi_event, edn);
     });
 
-    if (midi_in_port >= 0)
-        midi.open_input_port(static_cast<unsigned int>(midi_in_port), hw_midi_in_queue);
-    else if (!midi_in_port_name.empty())
-        midi.open_input_port_by_name(midi_in_port_name, hw_midi_in_queue);
+    if (args.midi_in_port >= 0)
+        midi.open_input_port(static_cast<unsigned int>(args.midi_in_port), hw_midi_in_queue);
+    else if (!args.midi_in_port_name.empty())
+        midi.open_input_port_by_name(args.midi_in_port_name, hw_midi_in_queue);
 
-    // OSC server
-    nomos::rt::osc_server osc{osc_port, osc_in_queue};
+    nomos::rt::osc_server osc{args.osc_port, osc_in_queue};
     osc.start();
-
-    // Process loop: audio_engine (wordclock-locked) or process_thread (headless).
-    const bool use_audio = !no_audio;
 
     std::unique_ptr<kairos::audio_engine>   audio_eng;
     std::unique_ptr<kairos::process_thread> proc_thread;
 
-    if (use_audio) {
+    if (!args.no_audio) {
         kairos::audio_engine::config eng_cfg{
             .sample_rate   = sample_rate,
-            .buffer_frames = block_size,
-            .out_channels  = audio_out_ch,
-            .in_channels   = audio_in_ch,
-            .device_id     = audio_device_id,
+            .buffer_frames = args.block_size,
+            .out_channels  = args.audio_out_ch,
+            .in_channels   = args.audio_in_ch,
+            .device_id     = args.audio_device,
         };
         audio_eng = std::make_unique<kairos::audio_engine>(
             eng_cfg, ctrl.graph(), link, midi_out_queue, ipc_in_queue, hw_midi_in_queue,
@@ -264,7 +193,7 @@ int main(int argc, char* argv[]) {
     if (!audio_eng) {
         kairos::process_thread::config proc_cfg{
             .sample_rate = sample_rate,
-            .block_size  = block_size,
+            .block_size  = args.block_size,
         };
         proc_thread = std::make_unique<kairos::process_thread>(
             proc_cfg, ctrl.graph(), link, midi_out_queue, ipc_in_queue, hw_midi_in_queue,
@@ -272,7 +201,6 @@ int main(int argc, char* argv[]) {
         proc_thread->start();
     }
 
-    // MIDI dispatch thread — drains midi_out_queue and sends to hardware
     std::thread midi_thread{[&]() {
         nomos::rt::block_signals_on_this_thread();
         while (g_running.load(std::memory_order_relaxed)) {
@@ -286,7 +214,6 @@ int main(int argc, char* argv[]) {
                 std::this_thread::sleep_for(std::chrono::microseconds(500));
             }
         }
-        // Drain any remaining events before exit.
         while (auto batch = midi_out_queue.pop()) {
             for (uint8_t i = 0; i < batch->count; ++i) {
                 const auto& e = batch->events[i];
@@ -297,10 +224,11 @@ int main(int argc, char* argv[]) {
     }};
 
     std::cerr << "[kairos] v" << kairos::version() << "\n";
-    std::cerr << "[kairos] socket=" << socket_path << " db=" << db_path << "\n";
-    std::cerr << "[link]   enabled, bpm=" << initial_bpm << "\n";
-    std::cerr << "[audio]  sample_rate=" << sample_rate << " block_size=" << block_size << "\n";
-    std::cerr << "[osc]    listening on port " << osc_port << "\n";
+    std::cerr << "[kairos] socket=" << args.socket_path << " db=" << args.db_path << "\n";
+    std::cerr << "[link]   enabled, bpm=" << args.bpm << "\n";
+    std::cerr << "[audio]  sample_rate=" << sample_rate << " block_size=" << args.block_size
+              << "\n";
+    std::cerr << "[osc]    listening on port " << args.osc_port << "\n";
 
     while (g_running.load(std::memory_order_relaxed))
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
