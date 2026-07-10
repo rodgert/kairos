@@ -16,9 +16,10 @@
 #include "plugin_discovery.hpp"
 #include "process_thread.hpp"
 
+#include <nomos/rt/signal_handlers.hpp>
+
 #include <atomic>
 #include <chrono>
-#include <csignal>
 #include <cstdlib>
 #include <iostream>
 #include <memory>
@@ -32,7 +33,7 @@ std::string_view version() noexcept;
 
 namespace {
 std::atomic<bool> g_running{true};
-void              on_signal(int) {
+void              on_signal(int) noexcept {
     g_running.store(false, std::memory_order_relaxed);
 }
 } // namespace
@@ -146,8 +147,7 @@ int main(int argc, char* argv[]) {
         return EXIT_SUCCESS;
     }
 
-    std::signal(SIGINT, on_signal);
-    std::signal(SIGTERM, on_signal);
+    nomos::rt::install_signal_handlers(on_signal);
 
     // Build plugin registry: builtins + discovered + explicit overrides.
     kairos::plugin_registry plugins;
@@ -274,6 +274,7 @@ int main(int argc, char* argv[]) {
 
     // MIDI dispatch thread — drains midi_out_queue and sends to hardware
     std::thread midi_thread{[&]() {
+        nomos::rt::block_signals_on_this_thread();
         while (g_running.load(std::memory_order_relaxed)) {
             if (auto batch = midi_out_queue.pop()) {
                 for (uint8_t i = 0; i < batch->count; ++i) {
