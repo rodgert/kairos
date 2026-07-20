@@ -139,6 +139,9 @@ int main(int argc, char* argv[]) {
         .max_frames    = args.block_size,
     };
     kairos::control_thread ctrl{ctrl_cfg, param_queue, ipc_in_queue};
+    ctrl.set_wasm_swap_fn([&ctrl](std::string_view node_id, std::string_view wasm_path) {
+        return ctrl.request_hot_swap(node_id, wasm_path);
+    });
     ctrl.start();
 
     nomos::rt::midi_io midi;

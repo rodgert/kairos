@@ -47,6 +47,10 @@ class control_thread : public nomos::rt::rt_control_thread {
 
     nomos::rt::rcu_managed<plugin_graph_manager>& graph() noexcept { return graph_; }
 
+    // Hot-swap a WASM node by id — safe to call from the control thread only.
+    // Used as the wasm_swap_fn target so Fennel's vcv.hot-swap! reaches the graph.
+    bool request_hot_swap(std::string_view node_id, std::string_view wasm_path);
+
   protected:
     void dispatch_extension(int conn_fd, const nomos::rt::ipc::message& msg,
                             std::optional<nomos::rt::session>& sess) override;

@@ -10,6 +10,16 @@
 #include <cstdio>
 #include <string>
 
+// kairos/vcv-ctrl CLAP extension — mirrors clap_kairos_vcv_ctrl_t in kairos-grid.
+// Defined here to avoid pulling kairos-grid headers into the kairos build.
+// Layout MUST remain in sync with kairos_grid/clap_kairos_vcv_ctrl.h.
+static constexpr const char* k_ext_kairos_vcv_ctrl = "kairos/vcv-ctrl";
+
+struct kairos_vcv_ctrl_ext_t {
+    void (*push_ctrl_response)(const clap_plugin_t* plugin, uint8_t type, const char* payload,
+                               uint32_t payload_len);
+};
+
 namespace kairos {
 
 namespace {
@@ -53,6 +63,17 @@ namespace {
     }
 
 } // namespace
+
+bool control_thread::request_hot_swap(std::string_view node_id, std::string_view wasm_path) {
+    // graph_.unsafe_get() is safe here: the control thread is the sole writer
+    // of graph_, and this method is only called from the Fennel eval path which
+    // also runs on the control thread.
+    auto* mgr = graph_.unsafe_get();
+    if (!mgr)
+        return false;
+    auto r = mgr->hot_swap_node(edn::keyword{node_id}, std::string(wasm_path), "");
+    return static_cast<bool>(r);
+}
 
 control_thread::control_thread(config cfg, nomos::rt::param_queue& queue,
                                nomos::rt::input_event_queue& in_queue)
@@ -125,6 +146,20 @@ void control_thread::dispatch_extension(int conn_fd, const nomos::rt::ipc::messa
                                       kairos_cfg_.max_frames);
                 mgr->start_processing_all();
                 const std::size_t n = mgr->node_count();
+
+                // Wire tty_sink → VCV ctrl response if kairos-grid is in this graph.
+                auto [vcv_plugin, vcv_ext_raw] = mgr->find_extension(k_ext_kairos_vcv_ctrl);
+                if (vcv_plugin && vcv_ext_raw) {
+                    const auto* vcv_ext = static_cast<const kairos_vcv_ctrl_ext_t*>(vcv_ext_raw);
+                    set_tty_sink([vcv_plugin, vcv_ext](std::string_view payload) {
+                        vcv_ext->push_ctrl_response(
+                            vcv_plugin, nomos::rt::ipc::msg_repl_eval_response, payload.data(),
+                            static_cast<uint32_t>(payload.size()));
+                    });
+                } else {
+                    set_tty_sink(nullptr);
+                }
+
                 graph_.store(std::move(mgr));
                 // Ack so the Clojure side gets a visible confirmation.
                 char ack[32];
