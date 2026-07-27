@@ -73,12 +73,21 @@ From the nous REPL:
 (kairos/send-graph-load! my-session-graph)
 ```
 
-## IPC protocol
+## Protocols
 
-Wire format: `[uint32 payload_len][uint8 type][uint8 reserved×3][UTF-8 EDN]`
+**nomos-rt IPC** (framed EDN to clients): wire format
+`[uint32 payload_len][uint8 type][uint8 reserved×3][UTF-8 EDN]`. Full opcode table
+and payload schemas in
+[`nomos-rt/doc/protocol-ipc.md`](https://github.com/nomos-studio/nomos-rt/blob/main/doc/protocol-ipc.md)
+(normative source `nomos-rt/include/nomos/rt/ipc.hpp`, 0x30–0x56).
 
-See [`nomos-rt/include/nomos/rt/ipc.hpp`](https://github.com/nomos-studio/nomos-rt)
-for the full message type table (0x30–0x52).
+**CLAP bus extensions** (block-rate host↔plugin, principally with kairos-grid):
+`kairos/param-bus`, `kairos/tap-bus`, `kairos/patch-bus` — see
+[`doc/protocol-clap-bus.md`](doc/protocol-clap-bus.md) (normative source: the three
+`include/kairos/clap_kairos_*_bus.h` headers).
+
+Both are indexed in the nomos-studio
+[component-boundaries](../nomos-studio/doc/component-boundaries.md) doc.
 
 ## Architecture
 
