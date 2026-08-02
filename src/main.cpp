@@ -121,6 +121,7 @@ int main(int argc, char* argv[]) {
     nomos::rt::input_event_queue ipc_in_queue;
     nomos::rt::input_event_queue hw_midi_in_queue;
     nomos::rt::input_event_queue osc_in_queue;
+    nomos::rt::osc_out_queue     osc_out_queue; // scheduled OSC → drained on the sender thread
 
     nomos::rt::event_scheduler scheduler;
 
@@ -131,6 +132,11 @@ int main(int argc, char* argv[]) {
     // handler can send outbound OSC through it (mirrors aion's .osc wiring).
     nomos::rt::osc_server osc{args.osc_port, osc_in_queue};
     osc.start();
+
+    // Route fired scheduled-OSC events to osc_out_queue. It fires inside the
+    // audio process() callback (hard-RT), which only pushes to the queue — never
+    // sends. The sender thread (below, alongside midi_out) does the sendto.
+    scheduler.set_osc_out(&osc_out_queue);
 
     kairos::control_thread::config ctrl_cfg{
         .socket_path   = args.socket_path,
@@ -209,26 +215,37 @@ int main(int argc, char* argv[]) {
         proc_thread->start();
     }
 
+    // Output sender thread — soft-RT: one thread draining separate MIDI and OSC
+    // out queues, performing the actual sends off the audio callback. The audio
+    // process() only enqueues (see the RT-priority boundary); the sendto/MIDI
+    // write happens here.
     std::thread midi_thread{[&]() {
         nomos::rt::block_signals_on_this_thread();
-        while (g_running.load(std::memory_order_relaxed)) {
-            if (auto batch = midi_out_queue.pop()) {
-                for (uint8_t i = 0; i < batch->count; ++i) {
-                    const auto& e = batch->events[i];
-                    if (e.size > 0)
-                        midi.send(std::vector<uint8_t>{e.data, e.data + e.size});
-                }
-            } else {
-                std::this_thread::sleep_for(std::chrono::microseconds(500));
-            }
-        }
-        while (auto batch = midi_out_queue.pop()) {
-            for (uint8_t i = 0; i < batch->count; ++i) {
-                const auto& e = batch->events[i];
+        auto drain_midi = [&](auto& batch) {
+            for (uint8_t i = 0; i < batch.count; ++i) {
+                const auto& e = batch.events[i];
                 if (e.size > 0)
                     midi.send(std::vector<uint8_t>{e.data, e.data + e.size});
             }
+        };
+        while (g_running.load(std::memory_order_relaxed)) {
+            bool did_work = false;
+            if (auto batch = midi_out_queue.pop()) {
+                drain_midi(*batch);
+                did_work = true;
+            }
+            while (auto out = osc_out_queue.pop()) {
+                osc.send_event(*out);
+                did_work = true;
+            }
+            if (!did_work)
+                std::this_thread::sleep_for(std::chrono::microseconds(500));
         }
+        // Final drain on shutdown.
+        while (auto batch = midi_out_queue.pop())
+            drain_midi(*batch);
+        while (auto out = osc_out_queue.pop())
+            osc.send_event(*out);
     }};
 
     std::cerr << "[kairos] v" << kairos::version() << "\n";
