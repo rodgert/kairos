@@ -12,7 +12,8 @@
 
 namespace nomos::rt {
 class link_peer;
-}
+class osc_server; // osc_server.hpp is internal (GPL); consumers use a pointer
+} // namespace nomos::rt
 
 namespace kairos {
 
@@ -31,6 +32,7 @@ class control_thread : public nomos::rt::rt_control_thread {
         std::string                     db_path;
         nomos::rt::sched_staging_queue* sched_staging{nullptr};
         nomos::rt::link_peer*           link_peer{nullptr};
+        nomos::rt::osc_server*          osc{nullptr}; // outbound msg_osc → external UDP
         plugin_registry                 plugins;
         const clap_host_t*              host{nullptr};
         double                          sample_rate{48000.0};

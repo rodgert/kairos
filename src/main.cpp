@@ -127,11 +127,17 @@ int main(int argc, char* argv[]) {
     nomos::rt::link_peer link{args.bpm};
     link.enable(true);
 
+    // OSC endpoint — constructed before the control thread so the base msg_osc
+    // handler can send outbound OSC through it (mirrors aion's .osc wiring).
+    nomos::rt::osc_server osc{args.osc_port, osc_in_queue};
+    osc.start();
+
     kairos::control_thread::config ctrl_cfg{
         .socket_path   = args.socket_path,
         .db_path       = args.db_path,
         .sched_staging = &scheduler.staging(),
         .link_peer     = &link,
+        .osc           = &osc,
         .plugins       = std::move(plugins),
         .host          = kairos::kairos_host(),
         .sample_rate   = sample_rate,
@@ -171,9 +177,6 @@ int main(int argc, char* argv[]) {
         midi.open_input_port(static_cast<unsigned int>(args.midi_in_port), hw_midi_in_queue);
     else if (!args.midi_in_port_name.empty())
         midi.open_input_port_by_name(args.midi_in_port_name, hw_midi_in_queue);
-
-    nomos::rt::osc_server osc{args.osc_port, osc_in_queue};
-    osc.start();
 
     std::unique_ptr<kairos::audio_engine>   audio_eng;
     std::unique_ptr<kairos::process_thread> proc_thread;

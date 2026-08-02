@@ -82,6 +82,7 @@ control_thread::control_thread(config cfg, nomos::rt::param_queue& queue,
               .socket_path   = std::move(cfg.socket_path),
               .db_path       = std::move(cfg.db_path),
               .sched_staging = cfg.sched_staging,
+              .osc           = cfg.osc,
           },
           queue, in_queue),
       kairos_cfg_(std::move(cfg)) {
