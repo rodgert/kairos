@@ -377,4 +377,17 @@ plugin_graph_manager::hot_swap_node(const edn::keyword& id, const std::string& n
     return nodes_[idx].inst.hot_swap(new_wasm_path, old_wasm_path);
 }
 
+std::pair<const clap_plugin_t*, const void*>
+plugin_graph_manager::find_extension(const char* ext_id) const noexcept {
+    for (const auto& n : nodes_) {
+        const clap_plugin_t* p = n.inst.raw();
+        if (!p)
+            continue;
+        const void* ext = p->get_extension(p, ext_id);
+        if (ext)
+            return {p, ext};
+    }
+    return {nullptr, nullptr};
+}
+
 } // namespace kairos

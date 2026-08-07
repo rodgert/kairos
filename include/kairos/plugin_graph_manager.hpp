@@ -74,6 +74,12 @@ class plugin_graph_manager {
     hot_swap_node(const edn::keyword& id, const std::string& new_wasm_path,
                   const std::string& old_wasm_path = {});
 
+    // Scan all loaded nodes for the given CLAP extension.
+    // Returns {plugin_ptr, ext_vtable_ptr} for the first node that provides it.
+    // Returns {nullptr, nullptr} if no node supports the extension.
+    // Caller casts ext_vtable_ptr to the appropriate extension struct pointer.
+    std::pair<const clap_plugin_t*, const void*> find_extension(const char* ext_id) const noexcept;
+
   private:
     struct node_entry {
         edn::keyword    id;
