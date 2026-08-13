@@ -5,6 +5,7 @@
 #include "event_collector.hpp"
 #include "input_event_buffer.hpp"
 #include "link_peer.hpp"
+#include "tap_snapshot.hpp"
 
 #include <kairos/plugin_graph_manager.hpp>
 #include <nomos/rt/event_scheduler.hpp>
@@ -37,7 +38,8 @@ class audio_engine {
                  nomos::rt::input_event_queue& ipc_in_queue,
                  nomos::rt::input_event_queue& hw_midi_in_queue,
                  nomos::rt::input_event_queue& osc_in_queue,
-                 nomos::rt::event_scheduler*   sched = nullptr);
+                 nomos::rt::event_scheduler*   sched   = nullptr,
+                 tap_snapshot_queue*           tap_out = nullptr);
     ~audio_engine();
 
     audio_engine(const audio_engine&)            = delete;
@@ -63,6 +65,12 @@ class audio_engine {
     nomos::rt::time_identity                      time_;
     nomos::rt::audio_device                       device_;
     nomos::rt::event_scheduler*                   sched_{nullptr};
+
+    // Tap telemetry: snapshot the tap bus on the audio thread into tap_out_ every
+    // tap_block_divisor_ blocks (≈ tap-push-rate-hz). Null = no tap draining.
+    tap_snapshot_queue* tap_out_{nullptr};
+    std::uint32_t       tap_block_divisor_{1}; // blocks between snapshots
+    std::uint32_t       tap_block_counter_{0};
 };
 
 } // namespace kairos

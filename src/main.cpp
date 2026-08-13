@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 
+#include <kairos/clap_kairos_tap_bus.h>
 #include <kairos/control_thread.hpp>
 #include <kairos/plugin_host.hpp>
 #include <nomos/rt/common_args.hpp>
@@ -19,6 +20,7 @@
 #include "plugin_discovery.hpp"
 #include "process_thread.hpp"
 
+#include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <iostream>
@@ -122,6 +124,7 @@ int main(int argc, char* argv[]) {
     nomos::rt::input_event_queue hw_midi_in_queue;
     nomos::rt::input_event_queue osc_in_queue;
     nomos::rt::osc_out_queue     osc_out_queue; // scheduled OSC → drained on the sender thread
+    kairos::tap_snapshot_queue tap_out_queue; // tap bus snapshots → drained on the sender thread
 
     nomos::rt::event_scheduler scheduler;
 
@@ -197,7 +200,7 @@ int main(int argc, char* argv[]) {
         };
         audio_eng = std::make_unique<kairos::audio_engine>(
             eng_cfg, ctrl.graph(), link, midi_out_queue, ipc_in_queue, hw_midi_in_queue,
-            osc_in_queue, &scheduler);
+            osc_in_queue, &scheduler, &tap_out_queue);
         if (!audio_eng->start()) {
             std::cerr << "[kairos] audio engine failed to start, falling back to headless\n";
             audio_eng.reset();
@@ -211,7 +214,7 @@ int main(int argc, char* argv[]) {
         };
         proc_thread = std::make_unique<kairos::process_thread>(
             proc_cfg, ctrl.graph(), link, midi_out_queue, ipc_in_queue, hw_midi_in_queue,
-            osc_in_queue, &scheduler);
+            osc_in_queue, &scheduler, &tap_out_queue);
         proc_thread->start();
     }
 
@@ -228,6 +231,34 @@ int main(int argc, char* argv[]) {
                     midi.send(std::vector<uint8_t>{e.data, e.data + e.size});
             }
         };
+        // Tap telemetry: a snapshot carries values by index; join them with the
+        // tap-schema names (read here, off the audio thread, via the rcu-protected
+        // graph) and push an msg_tap frame. Drop the snapshot if the schema epoch
+        // moved (graph reloaded) — the next snapshot will be consistent.
+        auto drain_taps = [&]() {
+            while (auto snap = tap_out_queue.pop()) {
+                auto g = ctrl.graph().read();
+                if (!g)
+                    continue;
+                auto [tp, ext] = g->find_extension(CLAP_EXT_KAIROS_TAP_BUS);
+                if (!tp || !ext)
+                    continue;
+                const auto* tb     = static_cast<const clap_plugin_tap_bus_t*>(ext);
+                const auto* schema = tb->get_schema(tp);
+                if (!schema || schema->epoch != snap->epoch)
+                    continue;
+                std::string    edn = "{:epoch " + std::to_string(snap->epoch) + " :taps {";
+                const uint32_t m   = std::min(snap->count, schema->count);
+                for (uint32_t i = 0; i < m; ++i) {
+                    edn += " :";
+                    edn += schema->entries[i].name; // controlled tap names (keyword-safe)
+                    edn += ' ';
+                    edn += std::to_string(snap->values[i]);
+                }
+                edn += "}}";
+                ctrl.push_frame(nomos::rt::ipc::msg_tap, edn);
+            }
+        };
         while (g_running.load(std::memory_order_relaxed)) {
             bool did_work = false;
             if (auto batch = midi_out_queue.pop()) {
@@ -238,6 +269,7 @@ int main(int argc, char* argv[]) {
                 osc.send_event(*out);
                 did_work = true;
             }
+            drain_taps();
             if (!did_work)
                 std::this_thread::sleep_for(std::chrono::microseconds(500));
         }

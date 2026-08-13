@@ -1,8 +1,11 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 #include "process_thread.hpp"
 
+#include <kairos/clap_kairos_tap_bus.h>
+
 #include <clap/process.h>
 
+#include <algorithm>
 #include <chrono>
 #include <thread>
 
@@ -10,13 +13,20 @@ namespace kairos {
 
 using namespace nomos::rt;
 
+// Target tap telemetry rate (Hz) — see audio_engine.
+static constexpr double k_tap_push_hz = 30.0;
+
 process_thread::process_thread(config cfg, rcu_managed<plugin_graph_manager>& graph,
                                link_peer& link, midi_event_queue& midi_out_queue,
                                input_event_queue& ipc_in_queue, input_event_queue& hw_midi_in_queue,
-                               input_event_queue& osc_in_queue, event_scheduler* sched)
+                               input_event_queue& osc_in_queue, event_scheduler* sched,
+                               tap_snapshot_queue* tap_out)
     : cfg_(cfg), graph_(graph), link_(link), midi_out_queue_(midi_out_queue),
       ipc_in_queue_(ipc_in_queue), hw_midi_in_queue_(hw_midi_in_queue), osc_in_queue_(osc_in_queue),
-      sched_(sched) {
+      sched_(sched), tap_out_(tap_out) {
+    const double blocks_per_sec =
+        cfg_.sample_rate / static_cast<double>(cfg_.block_size > 0 ? cfg_.block_size : 1);
+    tap_block_divisor_ = static_cast<std::uint32_t>(std::max(1.0, blocks_per_sec / k_tap_push_hz));
 }
 
 process_thread::~process_thread() {
@@ -86,6 +96,27 @@ void process_thread::run() {
             auto g = graph_.read();
             if (g && g->node_count() > 0) {
                 g->process_all(proc);
+
+                // Tap telemetry — snapshot the tap bus (throttled) while fresh;
+                // see audio_engine for the RT-safety rationale.
+                if (tap_out_ && ++tap_block_counter_ >= tap_block_divisor_) {
+                    tap_block_counter_         = 0;
+                    auto [tap_plugin, tap_ext] = g->find_extension(CLAP_EXT_KAIROS_TAP_BUS);
+                    if (tap_plugin && tap_ext) {
+                        const auto*  tb     = static_cast<const clap_plugin_tap_bus_t*>(tap_ext);
+                        const auto*  schema = tb->get_schema(tap_plugin);
+                        uint32_t     n      = 0;
+                        const float* vals   = tb->get_tap_frame(tap_plugin, &n);
+                        if (schema && vals && n > 0) {
+                            tap_snapshot snap;
+                            snap.epoch = schema->epoch;
+                            snap.count = std::min<uint32_t>(n, k_max_tap_values);
+                            for (uint32_t i = 0; i < snap.count; ++i)
+                                snap.values[i] = vals[i];
+                            tap_out_->push(snap);
+                        }
+                    }
+                }
             } else if (in_count > 0) {
                 // No plugin graph loaded: pass note/MIDI events directly to output.
                 const clap_input_events_t*  in_ev = in_buf_.input_events();

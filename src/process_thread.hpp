@@ -4,6 +4,7 @@
 #include "event_collector.hpp"
 #include "input_event_buffer.hpp"
 #include "link_peer.hpp"
+#include "tap_snapshot.hpp"
 
 #include <kairos/plugin_graph_manager.hpp>
 #include <nomos/rt/event_scheduler.hpp>
@@ -37,7 +38,8 @@ class process_thread {
                    nomos::rt::input_event_queue& ipc_in_queue,
                    nomos::rt::input_event_queue& hw_midi_in_queue,
                    nomos::rt::input_event_queue& osc_in_queue,
-                   nomos::rt::event_scheduler*   sched = nullptr);
+                   nomos::rt::event_scheduler*   sched   = nullptr,
+                   tap_snapshot_queue*           tap_out = nullptr);
     ~process_thread();
 
     process_thread(const process_thread&)            = delete;
@@ -62,8 +64,14 @@ class process_thread {
     nomos::rt::time_identity                      time_;
 
     nomos::rt::event_scheduler* sched_{nullptr};
-    std::atomic<bool>           running_{false};
-    std::thread                 thread_;
+
+    // Tap telemetry — see audio_engine. Null = no tap draining.
+    tap_snapshot_queue* tap_out_{nullptr};
+    std::uint32_t       tap_block_divisor_{1};
+    std::uint32_t       tap_block_counter_{0};
+
+    std::atomic<bool> running_{false};
+    std::thread       thread_;
 };
 
 } // namespace kairos

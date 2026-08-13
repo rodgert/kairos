@@ -1,9 +1,12 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 #include "audio_engine.hpp"
 
+#include <kairos/clap_kairos_tap_bus.h>
+
 #include <clap/events.h>
 #include <clap/process.h>
 
+#include <algorithm>
 #include <chrono>
 #include <cstring>
 
@@ -11,13 +14,22 @@ namespace kairos {
 
 using namespace nomos::rt;
 
+// Target tap telemetry rate (Hz). Snapshots are throttled to roughly this on the
+// audio thread. See §25 config tap-push-rate-hz (design-intent; hardcoded until
+// the tap bridge is wired to the live config registry).
+static constexpr double k_tap_push_hz = 30.0;
+
 audio_engine::audio_engine(config cfg, rcu_managed<plugin_graph_manager>& graph, link_peer& link,
                            midi_event_queue& midi_out_queue, input_event_queue& ipc_in_queue,
                            input_event_queue& hw_midi_in_queue, input_event_queue& osc_in_queue,
-                           event_scheduler* sched)
+                           event_scheduler* sched, tap_snapshot_queue* tap_out)
     : cfg_(cfg), graph_(graph), link_(link), midi_out_queue_(midi_out_queue),
       ipc_in_queue_(ipc_in_queue), hw_midi_in_queue_(hw_midi_in_queue), osc_in_queue_(osc_in_queue),
-      sched_(sched) {
+      sched_(sched), tap_out_(tap_out) {
+    // Snapshot every N blocks so the tap push rate ≈ k_tap_push_hz.
+    const double blocks_per_sec =
+        cfg_.sample_rate / static_cast<double>(cfg_.buffer_frames > 0 ? cfg_.buffer_frames : 1);
+    tap_block_divisor_ = static_cast<std::uint32_t>(std::max(1.0, blocks_per_sec / k_tap_push_hz));
 }
 
 audio_engine::~audio_engine() {
@@ -115,6 +127,29 @@ void audio_engine::on_audio_block(float** out_channels, const float* const* in_c
             g->process_all(proc);
             if (out_ch > 0)
                 g->collect_hw_output(out_channels, out_ch, nframes);
+
+            // Tap telemetry — snapshot the tap bus (throttled) while the frame is
+            // fresh (get_tap_frame is valid only until the next process()). Fixed-
+            // size copy, no alloc, no strings; the names are joined off the audio
+            // thread by the telemetry drain. Drops if the queue is full.
+            if (tap_out_ && ++tap_block_counter_ >= tap_block_divisor_) {
+                tap_block_counter_         = 0;
+                auto [tap_plugin, tap_ext] = g->find_extension(CLAP_EXT_KAIROS_TAP_BUS);
+                if (tap_plugin && tap_ext) {
+                    const auto*  tb     = static_cast<const clap_plugin_tap_bus_t*>(tap_ext);
+                    const auto*  schema = tb->get_schema(tap_plugin);
+                    uint32_t     n      = 0;
+                    const float* vals   = tb->get_tap_frame(tap_plugin, &n);
+                    if (schema && vals && n > 0) {
+                        tap_snapshot snap;
+                        snap.epoch = schema->epoch;
+                        snap.count = std::min<uint32_t>(n, k_max_tap_values);
+                        for (uint32_t i = 0; i < snap.count; ++i)
+                            snap.values[i] = vals[i];
+                        tap_out_->push(snap);
+                    }
+                }
+            }
         } else {
             if (out_ch > 0)
                 for (uint32_t c = 0; c < out_ch; ++c)
